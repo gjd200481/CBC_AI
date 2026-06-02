@@ -3,100 +3,84 @@ import matplotlib.pyplot as plt
 
 
 # ==========================
-# Parameters
+# 参数设置
 # ==========================
 
+# 网格采样点数。
 N = 512
+# 近场计算窗口尺寸，单位为米。
 L = 10e-3
+# 单束高斯光的腰斑半径，单位为米。
 w0 = 0.5e-3
-d = 1.5e-3      # beam spacing
-phi = np.pi     # phase difference
-
-
-x = np.linspace(
-    -L/2,
-    L/2,
-    N
-)
-
-X,Y=np.meshgrid(
-    x,
-    x
-)
+# 两束光在 x 方向上的中心间距，单位为米。
+d = 1.5e-3
+# 两束光之间的相位差。
+phi = np.pi
 
 
 # ==========================
-# Beam1
-# ==========================
-E1=np.exp(-((X+d/2)**2+Y**2)/w0**2)
-# ==========================
-# Beam2
+# 坐标网格
 # ==========================
 
-E2=np.exp(-((X-d/2)**2+Y**2)/w0**2)*np.exp(1j*phi)
+x = np.linspace(-L / 2, L / 2, N)
+X, Y = np.meshgrid(x, x)
 
 
 # ==========================
-# Coherent sum
+# 两束高斯光
 # ==========================
 
-E=E1+E2
+# 第一束光位于 x = -d/2，作为相位参考光束。
+E1 = np.exp(-((X + d / 2) ** 2 + Y**2) / w0**2)
 
-
-# ==========================
-# FFT
-# ==========================
-
-Farfield=np.fft.fftshift(
-np.fft.fft2(
-E
-)
-)
-
-Intensity=np.abs(
-Farfield
-)**2
-
-Intensity/=np.max(
-Intensity
-)
+# 第二束光位于 x = +d/2，并叠加相位差 phi。
+E2 = np.exp(-((X - d / 2) ** 2 + Y**2) / w0**2)
+E2 = E2 * np.exp(1j * phi)
 
 
 # ==========================
-# Plot
+# 近场叠加
 # ==========================
 
-plt.figure(
-figsize=(10,4)
-)
+# 两束光相干叠加，得到总复电场。
+E = E1 + E2
 
-plt.subplot(
-121
-)
 
-plt.imshow(
-np.abs(E),
-cmap='jet'
-)
+# ==========================
+# 远场计算
+# ==========================
 
-plt.title(
-"Near field"
-)
+# 用二维傅里叶变换模拟远场衍射图样。
+far_field = np.fft.fftshift(np.fft.fft2(E))
 
+# 远场光强为复电场模长平方，并归一化到最大值为 1。
+intensity = np.abs(far_field) ** 2
+intensity = intensity / np.max(intensity)
+
+
+# ==========================
+# 结果可视化
+# ==========================
+
+plt.figure(figsize=(10, 4))
+
+plt.subplot(1, 2, 1)
+plt.imshow(np.abs(E), cmap="jet")
+plt.title("Near field")
 plt.colorbar()
-plt.subplot(122)
-zoom = 10       # 调整放大倍数，可试 50~120
+
+# 只显示远场中心区域，方便观察干涉条纹细节。
+zoom = 10
 center = N // 2
-plt.imshow(
-    Intensity[
-        center-zoom:center+zoom,
-        center-zoom:center+zoom
-    ],
-    cmap='jet'
-)
-plt.title(
-    f"Far field, phi={phi}"
-)
+center_intensity = intensity[
+    center - zoom:center + zoom,
+    center - zoom:center + zoom
+]
+
+plt.subplot(1, 2, 2)
+plt.imshow(center_intensity, cmap="jet")
+plt.title(f"Far field, phi={phi}")
 plt.colorbar()
+
 plt.tight_layout()
 plt.show()
