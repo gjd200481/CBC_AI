@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
 import matplotlib.pyplot as plt
+import os
 
 
 # ======================
@@ -68,6 +69,10 @@ class SimpleCNN(nn.Module):
 
 image_path = "dataset/two_beam/images.npy"
 label_path = "dataset/two_beam/labels.npy"
+model_dir = "models"
+model_path = os.path.join(model_dir, "two_beam_cnn.pth")
+
+os.makedirs(model_dir, exist_ok=True)
 
 dataset = TwoBeamDataset(image_path, label_path)
 
@@ -136,6 +141,25 @@ for epoch in range(num_epochs):
         f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.6f}"
     )
 
+# ======================
+# Save model
+# ======================
+
+torch.save(
+    {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "num_epochs": num_epochs,
+        "train_losses": train_losses,
+        "image_path": image_path,
+        "label_path": label_path,
+        "model_class": "SimpleCNN",
+        "output_format": "[sin(phi), cos(phi)]",
+    },
+    model_path
+)
+
+print(f"\nModel saved to: {model_path}")
 
 # ======================
 # Test one sample
