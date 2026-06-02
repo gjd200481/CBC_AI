@@ -39,6 +39,7 @@ for i in range(num_samples):
     Farfield = np.fft.fftshift(np.fft.fft2(E))
     Intensity = np.abs(Farfield) ** 2
     Intensity = Intensity / np.max(Intensity)
+    
 
     # 只截取中心区域，避免远场太小
     zoom = 80
