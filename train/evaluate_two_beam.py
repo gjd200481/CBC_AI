@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, random_split
@@ -14,6 +15,21 @@ class Dataset2Beam(Dataset):
         # images 保存双光束干涉图，labels 保存每张图对应的目标值。
         self.images = np.load(image_path)
         self.labels = np.load(label_path)
+        if len(self.images) != len(self.labels):
+            raise ValueError(
+                f"Images and labels have different lengths: "
+                f"{len(self.images)} vs {len(self.labels)}"
+            )
+        if self.images.shape[1:] != (160, 160):
+            raise ValueError(
+                f"Expected images with shape (num_samples, 160, 160), "
+                f"got {self.images.shape}"
+            )
+        if self.labels.shape[1:] != (2,):
+            raise ValueError(
+                f"Expected labels with shape (num_samples, 2) for "
+                f"[sin(phi), cos(phi)], got {self.labels.shape}"
+            )
 
     def __len__(self):
         # DataLoader 会调用这个函数来获得数据集大小。
@@ -41,7 +57,7 @@ class CNN(nn.Module):
         # 卷积特征提取部分。
         # 每一组结构都是：卷积层 -> ReLU 激活函数 -> 最大池化层。
         self.features = nn.Sequential(
-            # 第 1 层卷积：输入 1 个通道，输出 16 个特征图，卷积核大小 3x3。
+            # 第 1 层卷积：输入 1 个灰度通道，输出 16 个特征图，卷积核大小 3x3。
             # padding=1 可以保持卷积前后的图像高宽不变。
             nn.Conv2d(1, 16, 3, padding=1),
             # ReLU 激活函数：把负值变成 0，保留正值，用来增加模型的非线性表达能力。
@@ -60,7 +76,7 @@ class CNN(nn.Module):
 
         # 全连接回归部分。
         # 这里把卷积提取到的二维特征转换成最终的 2 个输出值。
-        self.fc = nn.Sequential(
+        self.regressor = nn.Sequential(
             # 把 [通道数, 高, 宽] 展平成一维向量。
             nn.Flatten(),
             # 输入图像尺寸是 160x160，经过三次 2x2 池化后变成 20x20。
@@ -74,7 +90,7 @@ class CNN(nn.Module):
     def forward(self, x):
         # 前向传播：先经过卷积层提取特征，再经过全连接层输出预测结果。
         x = self.features(x)
-        x = self.fc(x)
+        x = self.regressor(x)
         return x
 
 
@@ -83,10 +99,14 @@ class CNN(nn.Module):
 # =====================================
 
 
-dataset = Dataset2Beam(
-    "dataset/two_beam/images.npy",
-    "dataset/two_beam/labels.npy",
-)
+image_path = "dataset/two_beam/images_noise_0.05.npy"
+label_path = "dataset/two_beam/labels_noise_0.05.npy"
+model_dir = "models"
+model_path = os.path.join(model_dir, "two_beam_cnn__noise_0.05.pth")
+
+os.makedirs(model_dir, exist_ok=True)
+
+dataset = Dataset2Beam(image_path, label_path)
 
 # 将数据集按 80% / 20% 划分为训练集和测试集。
 train_size = int(0.8 * len(dataset))
@@ -157,6 +177,27 @@ for epoch in range(20):
 
 
 # =====================================
+# save model
+# =====================================
+
+torch.save(
+    {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "num_epochs": 20,
+        "losses": losses,
+        "image_path": image_path,
+        "label_path": label_path,
+        "model_class": "CNN",
+        "output_format": "[sin(phi), cos(phi)]",
+    },
+    model_path,
+)
+
+print(f"Model saved to: {model_path}")
+
+
+# =====================================
 # evaluate
 # =====================================
 
@@ -189,7 +230,12 @@ pred_phi = np.array(pred_phi)
 true_phi = np.array(true_phi)
 
 # 计算预测相位和真实相位的误差。
-error = pred_phi - true_phi
+# 相位是周期变量，直接相减会在 -pi/pi 边界附近产生虚假的大误差。
+# 这里把误差重新折回到 [-pi, pi] 范围内。
+error = np.arctan2(
+    np.sin(pred_phi - true_phi),
+    np.cos(pred_phi - true_phi),
+)
 # RMSE 是均方根误差，用来衡量整体预测误差大小。
 rmse = np.sqrt(np.mean(error**2))
 

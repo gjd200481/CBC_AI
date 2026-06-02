@@ -70,7 +70,7 @@ plt.title("Near field")
 plt.colorbar()
 
 # 只显示远场中心区域，方便观察干涉条纹细节。
-zoom = 10
+zoom = 20
 center = N // 2
 center_intensity = intensity[
     center - zoom:center + zoom,

@@ -7,7 +7,7 @@ import torch.nn as nn
 
 
 class SimpleCNN(nn.Module):
-    """训练时使用的 CNN 结构，必须和 train/train_two_beam_cnn.py 中保持一致。"""
+    """训练时使用的 CNN 结构，必须和 train/evaluate_two_beam.py 中保持一致。"""
 
     def __init__(self):
         super().__init__()
@@ -57,7 +57,7 @@ class SimpleCNN(nn.Module):
 
 def load_model(model_path, device):
     """加载训练好的模型权重，并切换到 eval 推理模式。"""
-    # torch.load 读回 train/train_two_beam_cnn.py 中 torch.save 保存的字典。
+    # torch.load 读回 train/evaluate_two_beam.py 中 torch.save 保存的字典。
     # map_location=device 可以让模型在当前机器可用的 CPU/GPU 上加载。
     checkpoint = torch.load(model_path, map_location=device)
 
@@ -101,24 +101,28 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
 
     # 命令行参数允许你替换模型、数据路径或选择不同样本。
+    default_model_path = repo_root / "models" / "two_beam_cnn__noise_0.05.pth"
+    default_image_path = repo_root / "dataset" / "two_beam" / "images_noise_0.05.npy"
+    default_label_path = repo_root / "dataset" / "two_beam" / "labels_noise_0.05.npy"
+
     parser = argparse.ArgumentParser(
-        description="Demo: load two_beam_cnn.pth and predict phase from one image."
+        description="Demo: load a trained two-beam CNN model and predict one phase."
     )
     parser.add_argument(
         "--model-path",
-        default=repo_root / "models" / "two_beam_cnn.pth",
+        default=default_model_path,
         type=Path,
         help="训练后保存的模型文件路径。"
     )
     parser.add_argument(
         "--image-path",
-        default=repo_root / "dataset" / "two_beam" / "images.npy",
+        default=default_image_path,
         type=Path,
         help="待预测图像数据 .npy 文件路径。"
     )
     parser.add_argument(
         "--label-path",
-        default=repo_root / "dataset" / "two_beam" / "labels.npy",
+        default=default_label_path,
         type=Path,
         help="标签 .npy 文件路径；只用于 demo 中对比真实相位。"
     )
@@ -130,12 +134,12 @@ def main():
     )
     args = parser.parse_args()
 
-    # 训练脚本会把模型保存到 models/two_beam_cnn.pth。
-    # 如果这里找不到，说明需要先运行 train/train_two_beam_cnn.py。
+    # 训练脚本会把当前噪声数据模型保存到 models/two_beam_cnn__noise_0.05.pth。
+    # 如果这里找不到，说明需要先运行 train/evaluate_two_beam.py。
     if not args.model_path.exists():
         raise FileNotFoundError(
             f"找不到模型文件：{args.model_path}\n"
-            "请先运行 train/train_two_beam_cnn.py 生成 models/two_beam_cnn.pth"
+            "请先运行训练脚本生成 models/two_beam_cnn__noise_0.05.pth"
         )
 
     if not args.image_path.exists():
@@ -148,6 +152,11 @@ def main():
     # 加载模型和测试图像。
     model, checkpoint = load_model(args.model_path, device)
     images = np.load(args.image_path)
+    if images.shape[1:] != (160, 160):
+        raise ValueError(
+            f"Expected images with shape (num_samples, 160, 160), "
+            f"got {images.shape}"
+        )
 
     # 取出指定编号的单张图像，进行相位预测。
     image = images[args.index]
@@ -170,6 +179,11 @@ def main():
     # 如果标签文件存在，就顺便读出真实值，方便检查模型预测误差。
     if args.label_path.exists():
         labels = np.load(args.label_path)
+        if labels.shape[1:] != (2,):
+            raise ValueError(
+                f"Expected labels with shape (num_samples, 2) for "
+                f"[sin(phi), cos(phi)], got {labels.shape}"
+            )
         true = labels[args.index]
         true_phi = np.arctan2(true[0], true[1])
 
