@@ -1,0 +1,1063 @@
+﻿Citation: Pérez, S.; Buendía, A.;
+González, C.; Rodríguez, J.; Iglesias, S.;
+Fernández, J.; De Cos, F.J. Enhancing
+Open-Loop Wavefront Prediction in
+Adaptive Optics through 2D-LSTM
+Neural Network Implementation.
+Photonics 2024, 11, 240. https://
+doi.org/10.3390/photonics11030240
+Received: 29 January 2024
+Revised: 16 February 2024
+Accepted: 5 March 2024
+Published: 6 March 2024
+Copyright: © 2024 by the authors.
+Licensee MDPI, Basel, Switzerland.
+This article is an open access article
+distributed
+under
+the
+terms
+and
+conditions of the Creative Commons
+Attribution (CC BY) license (https://
+creativecommons.org/licenses/by/
+4.0/).
+photonics
+hv
+Article
+Enhancing Open-Loop Wavefront Prediction in Adaptive Optics
+through 2D-LSTM Neural Network Implementation
+Saúl Pérez 1,*
+, Alejandro Buendía 1
+, Carlos González 1,2
+, Javier Rodríguez 1
+, Santiago Iglesias 1
+,
+Julia Fernández 1
+and Francisco Javier De Cos 1,3
+1
+Instituto de Ciencias y Tecnologías Espaciales de Asturias (ICTEA), University of Oviedo,
+33004 Oviedo, Spain; buendiaalejandro@uniovi.es (A.B.); gonzalezgcarlos@uniovi.es (C.G.);
+rodriguezrjavier@uniovi.es (J.R.); iglesiassantiago@uniovi.es (S.I.); fernandezjulia@uniovi.es (J.F.);
+fjcos@uniovi.es (F.J.D.C.)
+2
+Department of Computer Science, University of Oviedo, 33007 Oviedo, Spain
+3
+Department of Exploitation and Exploration of Mines, University of Oviedo, 33004 Oviedo, Spain
+*
+Correspondence: perezsaul@uniovi.es
+Abstract: Adaptive optics (AO) is a technique with an important role in image correction on ground-
+based telescopes through the deployment of specific optical instruments and various control method-
+ologies. The synergy between these instruments and control techniques is paramount for capturing
+sharper and more accurate images. This technology also plays a crucial role in other applications,
+including power and information systems, where it compensates for thermal distortion caused by
+radiation. The integration of neural networks into AO represents a significant step towards achieving
+optimal image clarity. Leveraging the learning potential of these models, researchers can amplify
+control strategies to counteract atmospheric distortions effectively. Neural networks in AO not only
+produce results on par with conventional systems but also proffer benefits in cost-efficiency and
+streamlined implementation. This study explores the potential of an artificial neural network (ANN)
+as a nonlinear predictor for open-loop wavefronts. Expanding on prior evidence showing advan-
+tages over classic methods, this investigation boosts prediction accuracy through the integration of
+advanced models and machine learning approaches.
+Keywords: adaptive optics; machine learning; prediction
+MSC: 78A10; 68T05; 82C32
+1. Introduction
+Light that reaches ground-based telescopes is distorted due to atmospheric turbulence.
+The main goal of adaptive optics (AO) is to correct these distortions and restore the original
+wavefront, ensuring precise measurements. AO techniques typically use a Shack–Hartmann
+wavefront sensor (SH-WFS) [1] to measure these atmospheric turbulences. This sensor
+discerns the tilts of the distorted wavefront. The data collected by the SH-WFS are then
+relayed to the deformable mirror (DM) [2], a flexible reflective surface responsible for
+correcting the wavefront. The arrangement of these components, along with the data
+transfer process from the SH-WFS to the DM, defines the configuration of the AO system.
+Common configurations include the single-conjugated AO (SCAO), relying on a singular
+guide star for turbulence characterization, and the multiobject AO (MOAO), which uses
+several nearby stars as reference points for turbulence reconstruction [3].
+However, AO not only is a relevant technology for telescope image correction; there are
+some other applications such as systems of energy and information. Examples include free-
+space optical communication (FSO), in which AO can be employed to compensate distortion
+in the optical signal and improve the quality and reliability of optical communication [4];
+laser beam propagation, to mitigate the effects of atmospheric turbulence on the laser
+Photonics 2024, 11, 240. https://doi.org/10.3390/photonics11030240
+https://www.mdpi.com/journal/photonics
+
+
+Photonics 2024, 11, 240
+2 of 18
+beam [5]; and even medical imaging, a scenario where accurate focusing and targeting are
+crucial [6].
+In recent research works, there has been a noticeable increase in exploring the in-
+tegration of prediction-based control strategies into adaptive optics (AO) systems. The
+use of artificial intelligence has proven to be a powerful tool in science. This is due to its
+great ability to learn features and patterns from a large amount of data. AI is made up of
+individual processing units called neurons, so it mimics the process of interconnections
+and learning of a biological neural system.
+Taking into account, in addition to this, atmospheric turbulence can be modeled as
+a stack of static layers that are independent of each other, and that move with a velocity
+dependent on the wind that influences each of them, as can be seen in the work of [7,8] on
+the basis of the frozen flow hypothesis. This means that the evolution of this variable is not
+completely random, so it can be predicted in a certain way based on the partial temporal
+and spatial dependence that it possesses.
+Considering previous points, using a neural network applied to AO, the prediction
+model takes the information from the wavefront sensor and provides a tomographic
+reconstruction of the turbulence such that the aberrated wavefront is compensated with a
+deformable mirror [9].
+Those mentioned strategies involve predicting turbulence evolution, allowing control
+mechanisms to finely adjust the caption of light from celestial objects with a precision
+similar to conventional real-time control systems (RTCs). Another clear advantage of this
+approach is its significant reduction in both instrumentation and assembly costs.
+Some of the advances in the use of neural networks for AO correction can be found in
+works such as [10,11]. These provide relevant information for further works such as [12],
+in which convolutional networks are used to study image features by processing them
+with filters. Another useful work would be [9], where authors use more advanced neural
+networks like GANs and RNNs with a closed-loop configuration. In this case, GANs
+provide extra data to the experiment by recreating it based on the learned features.
+Building upon the foundation established in [13], this article aims to enhance the
+techniques and models introduced earlier.
+Section 2 explains the points considered when generating data through the simulation
+software ‘Soapy’, v0.14.0, as well as comprehensive insight into neural networks, the
+tool used to carry out the server-based predictions. Section 3 mentions the experiments
+undertaken in [13]; these have served as the basis for the current work. The foundations
+of the experiments carried out in the present article are also explained. These include, on
+the one hand, model training using Tensorflow to subsequently evaluate the efficiency of
+their predictions with data also generated from the “Soapy” simulator, as well as a second
+series of tests in which the stability of these models is analyzed under variations in some
+variables. All experiments are carried out using software and do not involve optical bench
+or laboratory tests. Section 4 clarifies the experimental outcomes.
+2. Methods and Materials
+2.1. Adaptive Optics
+Adaptive optics [14] encompasses a suite of techniques designed to rectify the distor-
+tion of light from distant sources in ground-based telescopes. Atmospheric turbulences
+introduce variations in the refractive index of the atmosphere, altering the trajectory of
+incoming light. As a result, plane wavefronts transform into aberrated ones, leading to
+blurred and diminished quality images.
+The essence of AO methodologies is to monitor the impact of these turbulence-induced
+fluctuations on the wavefront and to instigate real-time corrections. Guide stars serve as
+reference points to characterize these turbulences. This corrective action relies on three
+pivotal components: a wavefront sensor, typically the Shack–Hartmann wavefront sensor; a
+deformable mirror; and a controller or reconstructor. The SH-WFS, comprising a lens array,
+gauges the local inclinations of the wavefront and relays these data to the reconstructor.
+
+
+Photonics 2024, 11, 240
+3 of 18
+The reconstructor interprets this information and dispatches corrective instructions to the
+DM actuators. The DM then adjusts its surface in response to these directives to effectuate
+the required correction. A representative AO system is depicted in Figure 1.
+Figure 1. Scheme of single-conjugated AO in open-loop configuration. Distorted light passes through
+the Shack–Hartmann WFS, which sends information to DM to correct it.
+Data used along this paper are provided by a simulation tool, Simulation ‘Optique
+Adaptative’ with Python (SOAPY) [15]. SOAPY conducts end-to-end simulations of com-
+prehensive AO systems, spanning the creation of atmospheric screens to the final measure-
+ments of the telescope’s corrected wavefront. This simulator incorporates a multitude of
+parameters that allow for a detailed representation of various AO system modules.
+As demonstrated in previous experiments [13], the use of slopes as input for neural
+networks offers a more straightforward option to compute wavefront error predictions, due
+to the data structure being represented as a numerical matrix, comprising 30 time steps and
+72 slopes. Since there are 36 active sub-apertures, the 72 values are divided into 36 for the
+orthogonal “X” direction and another 36 for the “Y” direction. Once the slopes are obtained,
+they are processed through the transformation matrix to obtain the Zernike coefficients,
+which will be used to calculate the wavefront error (WFE) through the interaction matrix.
+In a practical case, the predicted slopes would be passed through the wavefront
+reconstruction algorithm, and a complete representation of the wavefront aberration would
+be obtained. Then, the necessary adjustments would be made to the deformable mirror
+actuators to correct the turbulence.
+The chosen simulation parameters are encapsulated in Table 1. Leveraging this con-
+figuration, the simulations mimic the CANARY low-order SCAO mode’s conditions [16],
+mirroring the conditions outlined in [13].
+
+
+Photonics 2024, 11, 240
+4 of 18
+Table 1. Main set of parameters for the Soapy SCAO simulation. Unless specified, simulations run
+with this set of parameters.
+Module
+Parameter
+Value
+System
+Frequency
+150 Hz
+Throughput
+1
+Gain
+1
+Atmosphere
+No. phase screens
+1
+Wind speeds
+from 10 to 15 m/s
+Wind direction
+0–360 deg
+Screen height
+from 1 to 11 km
+r0@500 nm
+0.16 m
+L0
+25 m
+Telescope
+Diameter
+4.2 m
+Central obscuration
+1.2 m
+SH-WFS
+GS magnitude
+10
+No. sub-apertures
+7 × 7
+Readout noise
+1 e−RMS
+Photon noise
+True
+Wavelength
+600 nm
+Thresholding value
+0.1
+Piezo DM
+No. actuators
+8 × 8
+A single layer was chosen to mirror the approach taken in [13], where these parameters
+were used in a similar manner. Essentially, as was mentioned before, the main goal of this
+study is to build a neural network that produces better predictions by sticking to the original
+conditions, enabling a comparison between the original model and those developed in the
+actual work.
+On the other hand, opting for a single turbulence layer simplifies the model training
+process, resulting in a notable reduction in computational costs. Moreover, ref. [13] also
+demonstrated that using a single layer also obtains good results for scenarios with more
+than one layer. Furthermore, introducing variability to the ensemble would enhance
+predictions in such scenarios.
+2.2. Neural Networks
+Neural networks, inspired by the human cerebral cortex, consist of layered artificial
+neurons. In 2006, Geoffrey Hinton et al. [17] showcased the significant ability of a neural
+network to accurately recognize digits. The perceptron, the foundational model of neural
+networks, traces its mathematical lineage to the work of Warren McCulloch and Walter
+Pitts in 1943 [18]. This concept set the stage for Frank Rosenblatt’s further development of
+the perceptron in 1958 [19].
+A typical neural network architecture includes an input layer, multiple hidden layers,
+and an output layer. Neurons in the hidden layers take weighted inputs from the previous
+layer, and an activation function processes these inputs, allowing the network to map
+intricate relationships in the data to produce the neuron’s output [20]. In supervised
+learning, the focus of this study, a labeled dataset is used. It enables the network to adjust
+its weights and biases iteratively, aiming to minimize the difference between predicted and
+actual outputs [21]. In the realm of adaptive optics, a great example of neural networks in
+action can be found as mentioned before in Osborn et al., 2012 [10], where they employed
+these networks for wavefront reconstruction.
+Recurrent neural networks (RNNs) are a specialized subset of deep learning models
+tailored for sequential data patterns. Unlike traditional neural networks, RNNs have
+feedback loops, allowing them to disseminate information in a bidirectional temporal
+manner. This feature makes them apt for time-sensitive data, like atmospheric turbulences.
+Among RNN variants, long short-term memory (LSTM) is noteworthy. Introduced by
+Hochreiter and Schmidhuber in 1997 [22], LSTMs address the challenge of vanishing
+
+
+Photonics 2024, 11, 240
+5 of 18
+gradients in training deep networks over extended sequences [23]. LSTMs stand out due to
+their gating mechanisms, determining which information to retain or discard, emphasizing
+pivotal details in sequences. Klaus Greff’s paper [24] offers an in-depth exploration of
+enhanced RNNs, juxtaposing them with other neural architectures. Beyond the highlighted
+benefits, RNNs excel in diverse tasks, such as generating image captions [25] and producing
+high-quality audio synthesis like WaveNet [26].
+Regarding atmospheric turbulence wavefront prediction, ref. [13] emphasizes two
+benefits of LSTMs:
+•
+Autonomous learning: The system does not assume any prior atmospheric knowledge,
+eliminating the need for manual input during its deployment.
+•
+Self-tuning: Dynamic memory elements enable the network to assimilate varying
+turbulence behaviors autonomously, enhancing its resilience in managing dynamic
+turbulence aspects.
+This study incorporates not just the LSTM but also the 2D-LSTM [27], designed to
+overcome LSTM limitations by adeptly processing bidimensional sequences. It discerns
+both spatial and temporal patterns simultaneously, with temporal cells managing time-
+related nuances and convolutional operations capturing spatial correlations.
+3. Experiments
+3.1. Prior Experiments
+Building on the findings presented in [13], this study delves deeper into the utilization
+of artificial neural networks for predicting wavefronts. The referenced article examined
+ANNs in the context of numerical simulations, employing a Shack–Hartmann wavefront
+sensor [28] in an open-loop configuration. The role of the ANN predictor is to anticipate
+the uncorrected wavefront slopes for subsequent time steps, basing its forecasts on a series
+of preceding noisy slope readings. The simulation not only furnishes the predictor with
+training data but also serves as a platform to gauge its efficacy within the adaptive optics
+correction mechanism.
+After training, an evaluation is carried out on predicted slopes in order to quantify the
+performance of these models. In that article, three control loop scenarios with and without
+servo-lag and with the ANN control loop are used, and a comparison of AO corrections in
+terms of root-mean-square wavefront errors (RMS WFE) is made.
+•
+Zero delay frame: Zero-delay or delay-compensated loop, using the current measure-
+ment (st) immediately.
+•
+1-Delay frame: One-frame delay loop, using the prior measurement (st−1).
+•
+Predicted frame: ANN predictive loop, employing the predicted current measurement
+(st) based on (s1, s2, ..., st−1) as input.
+The investigation focused on a system simulated with a 7 × 7 sub-aperture SH-WFS,
+evaluating the ANN predictor under diverse conditions. Important findings from the
+original research [13] include the following:
+•
+The ANN predictor markedly enhanced wavefront predictions for the SCAO sys-
+tem operating with a one-frame delay, independent of guide star brightness and
+wind speeds.
+•
+The ANN predictor showcased resilience against fluctuations on sub-second scales.
+While the model can be adapted to two-frame delay systems, the results were less
+than optimal.
+•
+Despite being trained on a solitary atmospheric turbulence layer, the ANN predictor
+demonstrated proficiency in forecasting wavefronts even under intricate multilayered
+conditions with distinct wind vectors, albeit with a decline in performance.
+3.2. Baseline for Comparison
+The conditions delineated in the original study will serve as the initial benchmark,
+juxtaposing the wavefront error across the three aforementioned scenarios (Figure 2).
+
+
+Photonics 2024, 11, 240
+6 of 18
+Figure 2. Simulated SCAO system and its data flow. Three cases of slopes are considered for
+calculating wavefront error in experiments.
+This methodology facilitates a nuanced appraisal of the suggested model’s efficacy
+within a comparable framework. The objective is to scrutinize how various prediction
+models fare concerning wavefront error prediction via artificial neural networks. However,
+a vital caveat to bear in mind is the intricacy of mirroring the exact atmospheric conditions
+delineated in the original research. While most simulation parameters are well defined,
+certain elements like atmospheric turbulence are complex as they involve both fractal and
+stochastic elements, posing challenges for precise replication.
+To address this limitation and ensure meaningful comparisons, an alternative approach
+will be adopted to evaluate the accuracy of the proposed models. For model training, root-
+mean-squared error (RMSE) between the predicted slopes and the real values is used, which
+implies it is not trained with a cost function dependent on the optical error. However, when
+performing the shown tests, the calculation of the wavefront error (WFE) is performed,
+being the percentage of residual error.
+Specifically, the error obtained from specific centroids in each of the considered con-
+ditions will be compared to the overall error of the system. Calculation of the wavefront
+error can be found in [13].
+Residual WFE [%] delayed =
+"
+WFEzero−delay −WFEdelayed
+WFEzero−delay
+#
+× 100
+(1)
+Residual WFE [%] predicted =
+"
+WFEzero−delay −WFEpredicted
+WFEzero−delay
+#
+× 100
+(2)
+To accomplish this, the results of the previous experiments will be replicated using the
+same model but with generated data. By doing so, a consistent baseline for comparison
+will be created, allowing for an assessment of the effectiveness of the novel ANN predictor
+in a manner that accounts for variations in the atmospheric conditions.
+3.3. Models Used in This Work
+Derived from the atmospheric conditions and other parameters detailed in Table 1, the
+dataset comprises 100,000 samples. Each sample encapsulates 100 time steps, and within
+every step, 72 values depict the slopes or centroids.
+For training purposes, a consistent input sequence of 30 time steps is employed.
+Mirroring the methodology of [13], atmospheric conditions remain unchanged within
+each sample. The dataset is further augmented by reversing each sequence, emulating the
+reversal of wind direction. This not only doubles the dataset to 200,000 samples but also
+enhances model robustness by introducing greater variability in the training data.
+Each instance of the datasets (both training and test) is configured with a different
+height and direction (Table 1), that is, each one is generated with a random height and
+direction parameter that propagates throughout the 30-frame temporal sequence.
+
+
+Photonics 2024, 11, 240
+7 of 18
+Earlier experiments used a straightforward data structure: the input “x” contained
+sequences with 30 time steps, each with 72 features, and the output “y” predicted the
+succeeding time step post the 30-step sequence from “x”. This study, however, has ventured
+into a novel data arrangement, identified through iterative experimentation to better
+capture temporal intricacies.
+For clarity, consider the matrices representing the training subsets: each matrix corre-
+sponds to a dataset sample and a specific slopes value. This structure enables the LSTM
+model to deeply grasp underlying patterns within temporal data, enhancing its predictive
+precision. For inputs, the matrices depict the 30-time step sequence (s0 , s1 , ..., s28 , s29).
+Outputs, on the other hand, are delineated by a 2 × 2 matrix containing two distinct se-
+quences. The first row contains the elements s28 and s29, while the second row contains s29
+and s30, with s30 being the time step to be predicted.
+xtrain =
+
+s0
+s1
+. . .
+s29
+
+ytrain =
+s28
+s29
+s29
+s30
+
+The architecture’s design facilitates enhanced interrelation discovery during gradient
+propagation; in this work it will be called “gradient propagation enhance” (GPE), with
+an emphasis on augmenting prediction accuracy over extended sequences. The first
+improvement involves implementing the GPE strategy within the original model, which
+means retaining the original model as specified in Section 3.2.2 and Table 2 in [13]. This
+results in what we refer to as the “GPE model”. As the main goal of this research is to
+improve the model’s ability to make accurate predictions for multiple time steps, not just
+the first one, it was decided to completely overhaul the model and its structure, with the
+goal of achieving significant improvements in both short-term and long-term predictions.
+No longer limited to basic LSTMs, it now integrates multiple layers, inclusive of 2D-LSTMs
+and 2D convolutional layers. This diversification enables the model to evaluate both
+temporal and spatial relationships, refining predictive accuracy. As in the previous case,
+this model will be referred to as the “2D-LSTM model” in future experiments.
+The neural network’s specifics can be referenced in Table 2. It amalgamates ConvL-
+STM2D layers for sequential data handling, BatchNormalization layers for normalization,
+and Conv2D layers for 2D convolutional operations. Together, these layers analyze input
+data to produce the final output: a prediction founded on the processed time step sequence.
+The network boasts 2,365,465 parameters, fine-tuned during training to optimize its efficacy.
+Table 2. The network is depicted, showing the layers that compose it, along with the input and
+output sizes, as well as the trainable parameters comprising the network.
+Layer
+Input Shape
+Output Shape
+Parameters
+InputLayer
+(30, 1, 72, 1)
+(30, 1, 72, 1)
+ConvLSTM2D
+(30, 1, 72, 1)
+(30, 1, 72, 128)
+594,944
+BatchNormalization
+(30, 1, 72, 128)
+(30, 1, 72, 128)
+512
+ConvLSTM2D
+(30, 1, 72, 128)
+(30, 1, 72, 128)
+1,180,160
+BatchNormalization
+(30, 1, 72, 128)
+(30, 1, 72, 128)
+512
+ConvLSTM2D
+(30, 1, 72, 128)
+(1, 72, 128)
+1,180,160
+BatchNormalization
+(1, 72, 128)
+(1, 72, 128)
+512
+Conv2D
+(1, 72, 128)
+(1, 72, 1)
+1153
+BatchNormalization
+(1, 72, 1)
+(1, 72, 1)
+4
+Conv2D
+(1, 72, 1)
+(1, 72, 1)
+10
+In this scenario, specifying the number of instances for the input layer is not necessary.
+This is because implementations of predefined models of recurrent neural networks in
+libraries like Keras and TensorFlow allow flexibility in the temporal dimension, and it
+would be determined automatically at the time of model training.
+
+
+Photonics 2024, 11, 240
+8 of 18
+Importantly, the need for custom layers is obviated thanks to the availability of both
+LSTM-2D layers and others in the Keras library [29]. An alternate model was probed
+in [30], where an LSTM encoder–decoder–predictor model was designed to concurrently
+reconstruct the input sequence and predict future sequences. However, their model’s fully
+connected LSTM layer overlooked spatial correlation, rendering the 2D-LSTM approach
+more favorable.
+3.4. ANN Training and Optimization
+The dataset is partitioned such that 90% of instances are earmarked for network
+training, while the remaining 10% is set aside for validation. Notably, regularization
+techniques like Dropout were abstained from being employed, given that performance has
+not been notably enhanced post model convergence. The mean-squared error (MSE) was
+chosen as the loss function, which quantifies the average squared discrepancy between
+actual and predicted outputs. The choice of the Adam optimizer stems from its efficacy
+in training models on sequential data. Adam blends the adaptive gradient algorithm
+with momentum-based optimization, adeptly managing diverse gradients [31]. Its auto-
+adaptive learning rates, informed by gradient history, tackle issues of vanishing/exploding
+gradients. The resultant momentum, combined with adaptive learning rates, accelerates
+training, culminating in more refined convergence for intricate tasks.
+To ensure proper convergence, training process is initiated with Adam’s default
+learning rate which is 1 × 10−3, and incorporates a reduction strategy using the “ReduceL-
+ROnPlateau” [32] function with a factor of 1/5 and a patience of 5 epochs. The training is
+configured for 40 epochs, and optimal results are typically observed between epochs 30
+and 40, with variations depending on the predicted time step.
+Delving into the specifics of the LSTM-2D layers, each layer employs 128 filters, paired
+with “same” padding and a 3 × 3 kernel size. The “return sequences” attribute is activated
+(set to “True”) for the initial two layers, ensuring each layer reciprocates with a sequence of
+outputs corresponding to every time step in the input sequence. However, the final layer
+modifies this parameter to “False”, returning only the ultimate output after processing the
+entire input sequence. As for the Conv2D layers, they mirror the padding and kernel size
+of their LSTM-2D counterparts. A singular filter is employed, advocating for a streamlined
+architecture with reduced parameters. This minimizes complexity and diminishes the
+potential for overfitting.
+3.5. Experiments Conducted in This Work
+The experiments can be bifurcated into two categories. First, the primary objective is
+to identify models that outperform previously identified ones. Concurrently, the chosen
+model’s performance and stability across a gamut of scenarios are assessed.
+Initially, the model structure mirroring the original study is utilized under the GPE
+framework. Subsequent iterations aim to leverage the LSTM-2D alongside convolutional
+layers, with a goal to improve predictions for not only the immediate but also future
+time steps. Once these models were in place, a plethora of tests were conducted across
+varying atmospheric conditions and input data configurations. These served to elucidate
+the strengths and potential vulnerabilities of the proposed models. Due to computational
+constraints, testing prioritized the most promising scenarios, focusing on the 2D-LSTM
+model within the immediate time step framework.
+•
+Sensitivity to noise level: As mentioned previously, in adaptive optics systems, guide
+stars are used as references to measure aberrations. In our specific case, with an SCAO
+configuration, we employ a point source at infinity to serve as a natural guide star
+(GS). That being said, the parameter of the guide star magnitude (GS Mag) refers to
+the brightness of this star, indicating that the higher the magnitude of the guide star,
+the fainter the flux from that GS, and so there is more noise [33]. In this experiment,
+an analysis of the model’s efficiency is conducted under different levels of noise in
+the WFS, allowing for an assessment of the model’s stability in response to variations
+
+
+Photonics 2024, 11, 240
+9 of 18
+in this parameter. As demonstrated in [13], a model trained on GSMag magnitudes
+that makes predictions on data of the same magnitude achieves higher performance,
+especially when dealing with a magnitude value of 10. While this magnitude was
+incorporated into the training data, the model’s stability was further probed across
+lower magnitudes (ranging from 0 to 8). The intent was to ascertain whether model
+accuracy remained consistent under these parameters.
+•
+Analysis of different turbulence strength: In the upcoming scenario, the focus will
+be on analyzing the Fried parameter, denoted as r0. This parameter is a commonly
+used metric in atmospheric science, particularly within the realm of astronomical
+observations, and is usually defined at 500 nm. The model is trained, as previously
+established, with simulated data considering a r0 of 16 cm. This value was chosen
+to imitate the case of the experiments of [13], as was performed in the different
+experiments of the work. Two extreme cases were considered for the test, with
+an r0 of 8 and 30 cm. However, throughout the time sequence, this parameter is
+kept constant in order to evaluate the performance of the model in the presence of
+a turbulence force of different magnitude. Theoretically, higher r0 values should
+simplify model predictions. A diminished r0 suggests a stronger optical turbulence,
+potentially complicating accurate forecasting.
+•
+Multiple layers of turbulence: The training model is based on a singular turbulence
+layer at a random wind direction and height. Yet, real-world scenarios often present
+multiple atmospheric layers, introducing a complex turbulence matrix. Consequently,
+the model’s resilience in multilayer scenarios is put to the test. Evaluations are
+segmented into three cases, with 1, 2, 5, 10, and 20 layers, respectively. Only the
+number of layers is changed; all other parameters in Table 1 remain constant.
+4. Results
+When visualizing the results, both improvement scenarios will be considered in the
+following manner. Firstly, the original model will be modified with the new training
+process, resulting in the creation of the GPE model, and secondly, the new 2D-LSTM
+model will be introduced. In both cases, the corresponding delay (s29) will be used as a
+reference, and the results will be compared between the original model and the new ones.
+Subsequently, each of the three experiments conducted to assess the model’s stability in
+response to atmospheric parameter modifications will be presented sequentially. These
+experiments include sensitivity to noise levels, turbulence strength r0, and the case of an
+atmosphere composed of multiple turbulence layers, in that order.
+In the process of testing prediction models, 2000 instances will be considered. However,
+numerical variations may be observed in the instances when turbulence parameters are
+adjusted, as was the case in the last three experiments. Each instance comprises a sequence
+of 100 frames, and this data sequence will be processed to generate predictions for each
+corresponding time step, resulting in a total of 100 predictions. To ensure clarity and to
+steer clear of regions where the models have not yet stabilized due to insufficient input
+data, the results are presented starting from frame number 40 onwards.
+The evaluation results will be presented using two terms: “average wavefront residual
+error” (AvgWFEr) and “error reduction” (ERr):
+•
+Average wavefront residual error: It is derived from the average of the residual errors
+for each of the 100 predictions in the sequence, representing the mean value for each
+prediction across the 2000 instances under consideration.
+•
+Error reduction: Based on the AvgWFEr of the original models, GPE, 2D-LSTM, and
+the corresponding AvgWFEr for each case, such as the 1-delay case for future time
+step prediction (s30), the error reduction achieved with each modification is calculated
+as a percentage.
+
+
+Photonics 2024, 11, 240
+10 of 18
+Within the experiment charts, one can observe a shaded area surrounding the curve,
+representing the standard deviation of the 2000 instances considered for each prediction in
+the sequence. This shading provides a visual representation of the variability associated
+with the predictions.
+To conduct an analysis of the models’ predictions and their performance, we focus
+on three specific time steps, denoted as the “First”, “Second”, and “Third time step”. As
+mentioned before, a sequence of 30 time steps is considered in training, from s0 to s29. That
+is, the “First time step” corresponds to step s30, the “Second time step” to s31, and the
+“Third time step” to s32. Subsequent time steps are excluded from consideration given the
+random nature of the atmospheric turbulence.
+4.1. GPE Model
+In the case of GPE, only the results for the first and second time steps are displayed, as
+there is minimal improvement observed in the third one compared to the model developed
+in the original study. Figures 3 and 4 show the performance of model GPE compared to
+the other cases, while Tables 3 and 4 show the average residual error values, as well as
+the error reduction from the 1-delay case reference in %, for the first and second frame
+cases, respectively.
+Figure 3. Residual error for 1-delay, original model, and GPE model. First frame.
+Table 3. First time step average residual error and proper reduction with original and GPE models.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+1-delay
+15.21
+Ref
+Original model
+13.42
+11.76
+GPE model
+13.11
+13.81
+Table 4. Second time step average residual error and proper reduction with original and GPE models.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+2-delay
+24.88
+Ref
+Original model
+19.93
+19.89
+GPE model
+19.72
+20.74
+
+
+Photonics 2024, 11, 240
+11 of 18
+Figure 4. Residual error for 2-delay, original, and GPE models. Second frame.
+4.2. 2D-LSTM model.
+In contrast, when evaluating the 2D-LSTM architecture, as mentioned earlier, the
+most favorable real-time predictions are observed under the conditions and telescope
+configuration assumed within the simulation. This enhancement is evident in both error
+reduction and the capacity to forecast further into the future, offering the potential for
+in-depth analysis in more advanced time steps beyond the initial three considered.
+Figures 5–7 depict a scenario similar to the one discussed in the GPE case. Here, the
+results of the original model are being compared with those from the 2D-LSTM structure.
+The examination of events during the third time step is also being carried out due to
+observed improvement.
+Tables 5–7 show the average residual error values, along with the corresponding error
+reduction percentages compared to the 1-delay case reference. These values pertain to the
+first, second, and third frame cases, respectively.
+Figure 5. Residual error for 1-delay, original, and 2D-LSTM models. First frame.
+
+
+Photonics 2024, 11, 240
+12 of 18
+Figure 6. Residual error for 2-delay, original, and 2D-LSTM models. Second frame.
+Figure 7. Residual error for 3-delay, original, and 2D-LSTM models. Third frame.
+Table 5. First time step average residual error and proper reduction with original and 2D-LSTM models.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+1-delay
+15.21
+Ref
+Original model
+13.42
+11.76
+2D-LSTM model
+12.35
+18.63
+Table 6. Second time step average residual error and proper reduction with original and 2D-
+LSTM models.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+2-delay
+24.88
+Ref
+Original model
+19.93
+19.89
+2D-LSTM model
+17.77
+28.58
+
+
+Photonics 2024, 11, 240
+13 of 18
+Table 7. Third time step average residual error and proper reduction with original and 2D-LSTM models.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+3-delay
+33.77
+Ref
+Original model
+25.47
+24.57
+2D-LSTM model
+20.50
+39.29
+4.3. Developed Models Comparison
+After performing an analysis of both models, for the subsequent two time steps in
+the case of the GPE (since the third one has hardly changed) and three time steps for the
+2D-LSTM, it is clear that the latter model outperforms the former. While GPE showcases
+a short-term enhancement comparing to the original model, the 2D-LSTM allows this
+improvement to propagate to time steps further in the future. For an overview of the
+results, refer to Tables 8 and 9.
+Table 8. First time step average residual error and proper reduction, global comparison.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+1-delay
+15.21
+Ref
+Original model
+13.42
+11.76
+GPE model
+13.11
+13.81
+2D-LSTM model
+12.35
+18.63
+Table 9. Second time step average residual error and proper reduction, global comparison.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+2-delay
+24.88
+Ref
+Original model
+19.93
+19.89
+GPE model
+19.72
+20.74
+2D-LSTM model
+17.77
+28.58
+4.4. Sensitivity to Noise Level
+It is expected that when training the model with a GSMag of magnitude 10, a good
+prediction can be achieved for data with that magnitude. However, the experiment demon-
+strates that, when data with a lower magnitude is used, and, therefore, there is less noise
+in the sensor, predictions of similar performance are still obtained. In Figure 8, the com-
+parison between the residual errors of each magnitude with respect to the 1-delay time
+step reference can be observed. Given that each case corresponds to a 1-delay reference, it
+results in different curve shapes. Nevertheless, graphically, we have omitted all 1-delay
+cases, except the main reference, due to their relative similarity in terms of the average term.
+In Table 10, the average residual error values are presented for every GSMag value, along
+with the corresponding error reduction percentages compared to the 1-delay reference. In
+this section, numerical results are presented for each of the considered cases.
+Table 10. First time step average residual error and proper reduction for 2D-LSTM model with
+different GSMag.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+1-delay (GS-10)
+15.33
+Ref (GS-10)
+1-delay (GS-8)
+15.28
+Ref (GS-8)
+1-delay (GS-4)
+15.21
+Ref (GS-4)
+1-delay (GS-0)
+15.32
+Ref (GS-0)
+GSMag-10
+12.43
+18.86
+GSMag-8
+12.36
+19.14
+GSMag-4
+12.11
+20.39
+GSMag-0
+12.21
+20.29
+
+
+Photonics 2024, 11, 240
+14 of 18
+Figure 8. Residual error for 1-delay and 2D-LSTM model with different GSMag values. First frame.
+4.5. Analysis of Different Turbulence Strength
+As mentioned before, a larger r0 value indicates a more stable atmosphere, which
+means fewer fluctuations and distortions in the light passing through it. Conversely, a
+smaller r0 value implies a more unstable atmosphere with greater turbulence, making it
+harder to obtain clear and sharp images.
+Based on the tests carried out, when a r0 magnitude of 8 cm is considered, a smaller
+error reduction can be observed (in Figure 9) than in the other scenarios, although it is
+not far away in terms of residual WFE, as it is shown that the model is able to provide
+good predictions even with a considerably unfavorable r0. In the 30 cm scenario, a greater
+reduction in error is observed compared to the 16cm case for which the model is trained.
+This is expected since, as mentioned earlier, the conditions are significantly better, making
+error reduction easier. In Table 11, the average residual error values are presented for each
+one of the r0 values, along with the corresponding error reduction percentages compared
+to their respective 1-delay case references.
+Figure 9. Residual error for 2D-LSTM model with different r0 values. First frame.
+
+
+Photonics 2024, 11, 240
+15 of 18
+Table 11. First time step average residual error and proper reduction for 2D-LSTM model with
+different r0.
+Case
+Avg Res Error [%]
+Error Reduction [%]
+1-delay (30 cm)
+14.76
+Ref for 30 cm
+1-delay (16 cm)
+15.33
+Ref for 16 cm
+1-delay (8 cm)
+13.80
+Ref for 8 cm
+30 cm
+11.44
+22.49
+16 cm
+12.43
+18.86
+8 cm
+11.54
+16.34
+4.6. Multiple Layers of Turbulence
+In this experiment, multiple datasets generated by the simulator are analyzed using
+the parameters outlined in Table 1. However, in this scenario, the modified variable is the
+number of turbulence layers. The objective is to assess the model’s performance when
+compared with more complex atmospheres. Each instance represents a time sequence with
+different height and wind direction, providing a comprehensive evaluation of the model’s
+capabilities under diverse conditions.
+Each of these turbulence layers represents a different part of the atmosphere where
+the properties of the air can change considerably. Therefore, it is natural to consider that
+when more turbulence layers are introduced, the model might not perform as well.
+In Figure 10, it is observed that as the number of turbulence layers increases, the model
+faces greater difficulty in reducing the residual error. However, there is also a significant
+variation in the residual error for the 1-delay corresponding to each case, as illustrated
+in Table 12. This table presents the average residual error values for different multilayer
+scenarios, accompanied by the respective error reduction percentages in comparison to the
+1-delay case reference.
+Figure 10. Residual error for 2D-LSTM model with different multilayer configurations. First frame.
+Table 12. First time step average residual error (reference errors are included) and proper reduction
+for 2D-LSTM model with different multilayer configurations.
+Case
+Ref Error [%]
+Avg Res Error [%]
+Error Reduction [%]
+1 layer
+15.33
+12.43
+18.86
+2 layers
+16.68
+15.33
+8.11
+
+
+Photonics 2024, 11, 240
+16 of 18
+Table 12. Cont.
+Case
+Ref Error [%]
+Avg Res Error [%]
+Error Reduction [%]
+5 layers
+17.40
+16.72
+3.91
+10 layers
+17.41
+16.89
+2.93
+20 layers
+17.51
+17.08
+2.50
+4.7. Results Overview
+While the modified version of the original model (GPE model) only achieves better
+short-term performance for the first predicted time step s30, and slightly better for the sec-
+ond time step s31, in the case of the 2D-LSTM, both short-term and long-term improvements
+are obtained. This is because the second case considers a combination of convolutional
+layers and two-dimensional LSTMs that allow the capture of both spatial and temporal fea-
+tures, as opposed to the original model in which only the time evolution of the atmospheric
+turbulence data was considered.
+Another point to bear in mind is the fact that the 2D-LSTM model demands more
+computational resources for training a big amount of data but less for a single sample (as
+typically performed in real-world scenarios). Furthermore, the smooth implementation of
+keras and Cuda with this type of neural network layers allows a very efficient integration
+which results in much more efficient training processes with the use of GPUs.
+Additionally, there is a brief period of several milliseconds required to achieve stability,
+as illustrated in Figures 5–7. However, this short delay is not of significant relevance, given
+that the system is designed for prolonged operation.
+In Sections 4.4–4.6, corresponding evaluations of the trained model against a magni-
+tude change in three different variables are carried out. In the case of the star magnitude,
+since it was trained with a magnitude of 10, good results are obtained when performing
+the tests for lower magnitudes with a lower amount of noise, which would be expected.
+However, it is important to note that the performance obtained by a model trained with
+GSMag 10, as demonstrated in the original work, offers the best predictions for datasets
+made up of data simulated with other magnitudes, which can also be observed in the
+present work. More importantly, with the new 2D-LSTM model, the residual errors for
+different magnitudes remain more or less in the same range, which means that it performs
+better than the original model.
+In Section 4.5, tests are considered based on the two extreme values of r0 (8 cm and
+30 cm), in which, again, favorable results are found, since the error reduction in the worst
+of the three cases considered, a magnitude of 8 cm, is achieved down to optimal levels by
+improving the “1-delay” reference case, the time step s29. As expected, at the value used for
+training, good results are obtained as in the simpler atmosphere case with an r0 of 30 cm.
+Finally, in Section 4.6, good results are obtained for the prediction of up to five
+turbulence layers; however, as the number of turbulence layers increases, the performance
+decreases significantly with respect to the single-layer case. However, despite this loss
+of efficiency, the residual error is still better than that of the 1-delay reference. Future
+experiments could consider creating a more varied dataset composed of more layers, so
+that the effect of data variability in predicting a multilayered atmosphere could be analyzed.
+5. Conclusions and Future Lines
+The research underscores the potential for enhancing adaptive optics wavefront pre-
+diction models. It reaffirms that with the deployment of sophisticated neural network
+structures, better performance metrics can be achieved than what is presently attainable.
+Notably, the 2D-LSTM model’s adeptness in processing both temporal and spatial data
+promotes accurate predictions beyond a single time step. Further analysis could explore
+the extent of this capability for a greater number of frames, thereby assessing how far it can
+be extended without compromising the model’s performance compared to the results of
+the 1-delay frame reference case.
+
+
+Photonics 2024, 11, 240
+17 of 18
+Diverse atmospheric parameters, including sensor noise magnitude and turbulence
+strength, were tested. While deviations from optimal conditions led to slightly reduced
+efficacy, the predictions remained within acceptable bounds. Enriching the training data
+with a wider range of values for these parameters could potentially amplify the model’s
+resilience against environmental fluctuations.
+Looking ahead, there are several promising avenues for further research. One of these
+involves considering the prediction of noise-free data as the output from noisy input data
+into the network. This approach has the potential to yield clean slopes, thus reducing a
+portion of the error that might occur in the image correction process.
+Another possibility worth exploring is the feasibility of enhancing processes through
+cascading predictions or similar methods, or potentially partitioning the data. Furthermore,
+there is a compelling opportunity to study the model’s efficiency and optimize it to reduce
+computational costs while minimizing any compromise in prediction accuracy.
+Additionally, there are plans to conduct real-world tests using an optical bench that
+will enable the replication of the atmospheric conditions considered in this study within
+the “Soapy” simulator. This will facilitate a direct comparison between results obtained
+from data generated by a pseudo-random algorithm and real atmospheric turbulence.
+Author Contributions: Conceptualization, S.P., A.B. and C.G.; data curation, S.P. and A.B.; for-
+mal analysis, S.P. and J.R.; funding acquisition, F.J.D.C.; investigation, S.P.; methodology, S.P.;
+project administration, F.J.D.C.; resources, S.P., A.B. and C.G.; software, S.P. and C.G.; supervi-
+sion, C.G. and F.J.D.C.; validation, S.P. and S.I.; visualization, S.P. and C.G.; writing—original draft,
+S.P.; writing—review and editing, S.P., C.G., J.R., S.I., J.F. and F.J.D.C. All authors will be informed
+about each step of manuscript processing including submission, revision, revision reminder, etc.
+via emails from our system or assigned Assistant Editor. All authors have read and agreed to the
+published version of the manuscript.
+Funding: The authors wish to acknowledge the SPANISH STATE RESEARCH AGENCY (MINISTRY
+OF ECONOMY AND INDUSTRY) for the funding provided through the project with reference
+MCIU-22-PID2021-127331NB-I00.
+Institutional Review Board Statement: Not applicable.
+Informed Consent Statement: Not applicable.
+Data Availability Statement: Data was obtained from open source simulator Soapy with the parame-
+ters described in Table 1.
+Conflicts of Interest: The authors declare no conflicts of interest.
+References
+1.
+Platt, B.C.; Shack, R. History and Principles of Shack-Hartmann Wavefront Sensing.
+J. Refract. Surg. 2001, 17, S573–S577.
+[CrossRef]
+2.
+Freeman, R.H.; Pearson, J.E. Deformable mirrors for all seasons and reasons. Appl. Opt. 1982, 21, 580–588. [CrossRef]
+3.
+Hubin, N.; Ellerbroek, B.L.; Arsenault, R.; Clare, R.M.; Dekany, R.; Gilles, L.; Kasper, M.; Herriot, G.; Le Louarn, M.; Marchetti, E.;
+et al. Adaptive optics for Extremely Large Telescopes. Proc. Int. Astron. Union 2005, 1, 60–85. [CrossRef]
+4.
+Weyrauch, T.; Vorontsov, M.A., Free-space laser communications with adaptive optics: Atmospheric compensation experiments.
+In Free-Space Laser Communications: Principles and Advances; Springer: New York, NY, USA, 2008; pp. 247–271. [CrossRef]
+5.
+Schonfeld, J.F. Linearized theory of thermal-blooming phase-compensation instability with realistic adaptive-optics geometry.
+J. Opt. Soc. Am. B 1992, 9, 1803–1812. [CrossRef]
+6.
+Roorda, A.; Romero-Borja, F.; Donnelly, W.J., III; Queener, H.; Hebert, T.J.; Campbell, M.C. Adaptive optics scanning laser
+ophthalmoscopy. Opt. Express 2002, 10, 405–412. [CrossRef]
+7.
+Wang, L.; Schöck, M.; Chanan, G. Atmospheric turbulence profiling with slodar using multiple adaptive optics wavefront sensors.
+Appl. Opt. 2008, 47, 1880–1892. [CrossRef] [PubMed]
+8.
+Poyneer, L.; van Dam, M.; Véran, J.P. Experimental verification of the frozen flow atmospheric turbulence assumption with use of
+astronomical adaptive optics telemetry. J. Opt. Soc. Am. A 2009, 26, 833–846. [CrossRef]
+9.
+Wong, A.P.; Norris, B.R.M.; Deo, V.; Guyon, O.; Tuthill, P.G.; Lozi, J.; Vievard, S.; Ahn, K. Machine learning for wavefront sensing.
+In Proceedings of the Adaptive Optics Systems VIII, Montreal, QC, Canada, 17–23 July 2022; Schreiber, L., Schmidt, D., Vernet, E.,
+Eds.; International Society for Optics and Photonics, SPIE: Bellingham, WA, USA, 2022; Volume 12185, p. 121852I. [CrossRef]
+
+
+Photonics 2024, 11, 240
+18 of 18
+10.
+Osborn, J.; Juez, F.J.D.C.; Guzman, D.; Butterley, T.; Myers, R.; Guesalaga, A.; Laine, J. Using artificial neural networks for
+open-loop tomography. Opt. Express 2012, 20, 2420–2434. [CrossRef]
+11.
+Guo, H.; Korablinova, N.; Ren, Q.; Bille, J. Wavefront reconstruction with artificial neural networks.
+Opt. Express 2006,
+14, 6456–6462. [CrossRef]
+12.
+Suárez Gómez, S.L.; González-Gutiérrez, C.; Alonso, E.D.; Santos, J.D.; Sánchez Rodríguez, M.L.; Morris, T.; Osborn, J.; Basden, A.;
+Bonavera, L.; González, J.G.N.; et al. Experience with artificial neural networks applied in multi-object adaptive optics. Publ.
+Astron. Soc. Pac. 2019, 131, 108012. [CrossRef]
+13.
+Liu, X.; Morris, T.; Saunter, C.; de Cos Juez, F.J.; González-Gutiérrez, C.; Bardou, L. Wavefront prediction using artificial neural
+networks for open-loop adaptive optics. Mon. Not. R. Astron. Soc. 2020, 496, 456–464. [CrossRef]
+14.
+Beckers, J.M. Adaptive Optics For Astronomy: Principles, Perfomance, and Applications. Annu. Rev. Astron. Astrophys. 1993,
+31, 13–62. [CrossRef]
+15.
+Reeves, A. Soapy: An adaptive optics simulation written purely in Python for rapid concept development. In Proceedings
+of the Adaptive Optics Systems V, Edinburgh, UK, 26 June–1 July 2016; Marchetti, E., Close, L.M., Véran, J.P., Eds.; Society of
+Photo-Optical Instrumentation Engineers (SPIE) Conference Series; Volume 9909, p. 99097F. [CrossRef]
+16.
+Morris, T.; Hubert, Z.; Myers, R.; Gendron, E.; Longmore, A.; Rousset, G.; Talbot, G.; Fusco, T.; Dipper, N.; Vidal, F.; et al. Canary:
+the ngs/lgs moao demonstrator for eagle. In Proceedings of the Adaptative Optics for Extremely Large Telescopes, Paris, France,
+22–26 June 2009; p. 08003. [CrossRef]
+17.
+Hinton, G.; Osindero, S.; Teh, Y.W. A Fast Learning Algorithm for Deep Belief Nets.
+Neural Comput. 2006, 18, 1527–1554.
+[CrossRef] [PubMed]
+18.
+Fitch, F.B. Warren S. McCulloch and Walter Pitts. A logical calculus of the ideas immanent in nervous activity. Bulletin of
+mathematical biophysics, vol. 5 (1943), pp. 115–133. J. Symb. Log. 1944, 9, 49–50. [CrossRef]
+19.
+Rosenblatt, F. The perceptron: A probabilistic model for information storage and organization in the brain. Psychol. Rev. 1958,
+65, 386–408. [CrossRef] [PubMed]
+20.
+LeCun, Y.; Bengio, Y.; Hinton, G. Deep learning. Nature 2015, 521, 436–444. [CrossRef]
+21.
+Rumelhart, D.E.; Hinton, G.E.; Williams, R.J. Learning representations by back-propagating errors. Nature 1986, 323, 533–536.
+[CrossRef]
+22.
+Hochreiter, S.; Hochreiter, S.; Schmidhuber, J.; Schmidhuber, J. Long short-term memory. Neural Comput. 1997, 9, 1735–1780.
+[CrossRef]
+23.
+Goodfellow, I.; Bengio, Y.; Courville, A. Deep Learning; MIT Press: Cambridge, MA, USA, 2016.
+Available online: http:
+//www.deeplearningbook.org (accessed on 3 March 2023).
+24.
+Greff, K.; Srivastava, R.K.; Koutnik, J.; Steunebrink, B.R.; Schmidhuber, J. LSTM: A Search Space Odyssey. IEEE Trans. Neural
+Netw. Learn. Syst. 2017, 28, 2222–2232. [CrossRef]
+25.
+Vinyals, O.; Toshev, A.; Bengio, S.; Erhan, D. Show and Tell: A Neural Image Caption Generator. arXiv 2015, arXiv:1411.4555.
+26.
+van den Oord, A.; Dieleman, S.; Zen, H.; Simonyan, K.; Vinyals, O.; Graves, A.; Kalchbrenner, N.; Senior, A.; Kavukcuoglu, K.
+WaveNet: A Generative Model for Raw Audio. arXiv 2016, arXiv:1609.03499.
+27.
+Shi, X.; Chen, Z.; Wang, H.; Yeung, D.Y.; kin Wong, W.; chun Woo, W. Convolutional LSTM Network: A Machine Learning
+Approach for Precipitation Nowcasting. arXiv 2015, arXiv:1506.04214.
+28.
+Primot, J. Theoretical description of Shack–Hartmann wave-front sensor. Opt. Commun. 2003, 222, 81–92. [CrossRef]
+29.
+Keras. 2015. Available online: https://keras.io (accessed on 8 July 2023).
+30.
+Srivastava, N.; Mansimov, E.; Salakhutdinov, R. Unsupervised Learning of Video Representations using LSTMs. arXiv 2016,
+arXiv:1502.04681.
+31.
+Kingma, D.P.; Ba, J. Adam: A Method for Stochastic Optimization. arXiv 2017, arXiv:1412.6980.
+32.
+Team, K. Keras Documentation: ReduceLROnPlateau. 2023. Available online: https://keras.io/api/callbacks/reduce_lr_on_
+plateau/ (accessed on 27 July 2023).
+33.
+Ageorges, N.; Dainty, C. Laser Guide Star Adaptive Optics for Astronomy; Nato Science Series; Springer: Dordrecht, The Nether-
+lands, 2000. [CrossRef]
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual
+author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to
+people or property resulting from any ideas, methods, instructions or products referred to in the content.

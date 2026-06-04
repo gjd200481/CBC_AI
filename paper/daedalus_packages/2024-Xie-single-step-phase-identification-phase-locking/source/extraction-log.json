@@ -1,0 +1,77 @@
+{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2024_ScientificReports_single_step_phase_identification_phase_locking_CBC_deep_learning.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2024-Xie-single-step-phase-identification-phase-locking",
+  "pages": 13,
+  "figures": [
+    {
+      "name": "Figure-1.png",
+      "page": 2,
+      "bbox": [
+        151.9,
+        480.5,
+        392.3,
+        693.3
+      ],
+      "caption": "The output of the HeNe laser was expanded and directed onto the SLM to create seven parallel beams with controllable phase values. These beams were brought to a focus with a lens, and the intensity profile was measured by camera A (before the focal plane) and camera B (at the focal plane)."
+    },
+    {
+      "name": "Figure-2.png",
+      "page": 4,
+      "bbox": [
+        68.3,
+        46.5,
+        558.2,
+        564.1
+      ],
+      "caption": "(a) Schematic depicting the indices of all simulated fibres and the colour mapping for the phase values used in this work, and the associated experimental images recorded on camera A and camera B. (b) Examples of randomly chosen phase values and their corresponding camera A and camera B images, including the all-zero phase case."
+    },
+    {
+      "name": "Figure-3.png",
+      "page": 5,
+      "bbox": [
+        112.3,
+        46.5,
+        558.2,
+        615.7
+      ],
+      "caption": "Prediction accuracy for camera A and camera B, and relative importance of camera pixels in making phase predictions calculated using gradient analysis."
+    },
+    {
+      "name": "Figure-4.png",
+      "page": 7,
+      "bbox": [
+        139.5,
+        46.5,
+        558.2,
+        615.7
+      ],
+      "caption": "Flowchart of the application of deep learning for real-time bespoke beam shaping, and examples of random phase values and the progression to the final petal beam shape."
+    },
+    {
+      "name": "Figure-5.png",
+      "page": 8,
+      "bbox": [
+        93.2,
+        46.5,
+        558.2,
+        615.7
+      ],
+      "caption": "Real time concept flowchart for bespoke beam shaping with additional random phase noise, examples of real-time generation of the petal profile, and power-in-the-bucket comparison."
+    },
+    {
+      "name": "Figure-6.png",
+      "page": 10,
+      "bbox": [
+        151.9,
+        46.5,
+        469.5,
+        615.7
+      ],
+      "caption": "Experimental demonstration of two neural networks for determining whether a given intensity pattern is physically possible, including rotations of 0?, 30? and 60? and statistical analysis over 900 examples."
+    }
+  ],
+  "tables": [],
+  "notes": [
+    "Figure crops are based on detected PDF image blocks using PyMuPDF. No formal table captions were detected."
+  ]
+}

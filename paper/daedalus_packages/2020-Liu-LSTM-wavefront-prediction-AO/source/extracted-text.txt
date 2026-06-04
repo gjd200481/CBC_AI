@@ -1,0 +1,1287 @@
+﻿MNRAS 000, 1–10 (2019)
+Preprint 29 May 2020
+Compiled using MNRAS LATEX style ﬁle v3.0
+Wavefront prediction using artiﬁcial neural networks for
+open-loop Adaptive Optics
+Xuewen Liu,1⋆Tim Morris,1 Chris Saunter,1 Francisco Javier de Cos Juez,2
+Carlos Gonz´alez-Guti´errez,2 Lisa Bardou1
+1Centre for Advanced Instrumentation, Department of Physics, Durham University, South Road, Durham DH1 3LE, UK
+2University Institute of Space Sciences and Technologies of Asturias, University of Oviedo, 33004 Oviedo, Spain
+Accepted XXX. Received YYY; in original form ZZZ
+ABSTRACT
+Latency in the control loop of adaptive optics (AO) systems can severely limit per-
+formance. Under the frozen ﬂow hypothesis linear predictive control techniques can
+overcome this, however identiﬁcation and tracking of relevant turbulent parameters
+(such as wind speeds) is required for such parametric techniques. This can complicate
+practical implementations and introduce stability issues when encountering variable
+conditions. Here we present a nonlinear wavefront predictor using a Long Short-Term
+Memory (LSTM) artiﬁcial neural network (ANN) that assumes no prior knowledge
+of the atmosphere and thus requires no user input. The ANN is designed to predict
+the open-loop wavefront slope measurements of a Shack-Hartmann wavefront sensor
+(SH-WFS) one frame in advance to compensate for a single-frame delay in a simulated
+7 × 7 single-conjugate adaptive optics (SCAO) system operating at 150 Hz. We de-
+scribe how the training regime of the LSTM ANN aﬀects prediction performance and
+show how the performance of the predictor varies under various guide star magnitudes.
+We show that the prediction remains stable when both wind speed and direction are
+varying. We then extend our approach to a more realistic two-frame latency system.
+AO system performance when using the LSTM predictor is enhanced for all simulated
+conditions with prediction errors within 19.9 to 40.0 nm RMS of a latency-free system
+operating under the same conditions compared to a bandwidth error of 78.3 ± 4.4 nm
+RMS.
+Key words:
+instrumentation: adaptive optics – methods: numerical – atmospheric
+eﬀects
+1
+INTRODUCTION
+In adaptive optics (AO) systems, time lag between wave-
+front detection and correction induces the bandwidth error.
+For Extreme AO (XAO) systems for high contrast imaging
+(HCI) of exoplanets, the bandwidth error results in broaden-
+ing of the point spread function (PSF) along dominant wind
+directions, which severely degrades contrast, especially at
+small star separations (Kasper 2012; Males & Guyon 2018).
+For wide-ﬁeld AO systems dominated by tomographic er-
+rors, to keep bandwidth error tolerable, the integration time
+of wavefront sensing and thus guidable star magnitude (ei-
+ther natural or laser) is limited, which then limits the sky
+coverage (Correia et al. 2014; Jackson et al. 2015). One way
+to overcome this problem is to predict the future wavefront
+from recent past wavefront measurements. Under the frozen
+ﬂow hypothesis (Wang et al. 2008; Poyneer et al. 2009),
+⋆E-mail: xuewen.liu@durham.ac.uk
+the turbulence volume is modeled as a linear composition of
+static, independent layers, each translating across the tele-
+scope aperture with certain velocity as a result of dominant
+wind at that layer. Because of this spatial and temporal cor-
+relation, it is possible that the future wavefronts can be par-
+tially predicted using past measurements. This hypothesis is
+a reasonable simpliﬁcation of the turbulence for wavefront
+prediction purposes.
+Predictive control in AO is an active research area that
+incorporates wavefront prediction based on the frozen ﬂow
+hypothesis into controller design. One of the most popular
+schemes is the Kalman ﬁlter based Linear Quadratic Gaus-
+sian (LQG) control (Paschall & Anderson 1993; Le Roux
+et al. 2004). Under this framework, the whole system (both
+turbulence and AO system) is represented by a small set of
+state variables. Linear models are used to describe temporal
+evolution of those variables as well as their links with sys-
+tem measurements. Priors from system telemetry and noise
+statistics are then combined to obtain the control law. Be-
+© 2019 The Authors
+arXiv:2005.14078v1  [astro-ph.IM]  28 May 2020
+
+
+2
+Xuewen Liu et al.
+cause of its ﬂexibility in structure, LQG predictors allow
+for additional consideration of other system error sources
+such as static error and vibration. Numerical and labora-
+tory implementations focusing on a single or a few Zernike
+modes show great improvement in terms of overall residual
+phase error or Strehl ratio (Le Roux et al. 2004; Kulcs´ar
+et al. 2012) and especially vibration ﬁltering (Petit et al.
+2006, 2008). Poyneer et al. (2007) developed a computa-
+tionally eﬃcient Fourier based LQG predictive controller,
+which can be extended to non-integer loop delays (Poyneer
+& V´eran 2008), facilitating graceful formulation of wind-
+blown turbulence evolution under Fourier basis. Laboratory
+tests demonstrate a reduction of around 67% in bandwidth
+error using a full Fourier LQG controller (Rudy et al. 2015).
+Correia et al. (2014) incorporates open-loop wavefront pre-
+diction into a minimum mean square error (MMSE) tomo-
+graphic reconstructor design for multi-object AO systems.
+This tomographic predictor allows for use of one-magnitude
+fainter guide stars (corresponding to an increase in the den-
+sity of available stars by a factor of 1.8) in end-to-end simu-
+lations of RAVEN (Andersen et al. 2012), which is expected
+to be further improved if deployed within a LQG framework.
+LQG based predictive control has been deployed for AO sys-
+tems on HCI instrument SPHERE (Petit et al. 2014) for
+both turbulence correction and vibration ﬁltering in tip-tilt
+modes. Stability and robustness of LQG controller in full-
+mode single-conjugate AO (SCAO) control has also been
+veriﬁed on sky (Sivo et al. 2014), showing overall perfor-
+mance improvement over a standard integrator controller in
+conditions where bandwidth error is not dominant.
+The recently proposed Empirical Orthogonal Functions
+framework (Guyon & Males 2017) for predictive control aims
+at fully exploiting linear spatio-temporal correlations within
+input telemetry and improving controller robustness by as-
+suming no physical model of turbulence evolution. Numeri-
+cal HCI simulations demonstrate signiﬁcantly improved con-
+trast and robustness against sensor noise. Although this fea-
+ture can signiﬁcantly simplify practical implementation, fre-
+quent re-learning and update is unavoidable, for such data-
+driven predictor and above-mentioned LQG approach, to
+adapt to varying turbulence conditions.
+In this paper, we exploit the potential of artiﬁcial neu-
+ral networks (ANNs) as a nonlinear framework for wave-
+front prediction. Early numerical simulations adopting a
+feed-forward multi-layer perceptron (MLP) network demon-
+strate promise for using this nonlinear tool for slope predic-
+tion based on a time series of past noisy measurements by
+a Shack-Hartmann wavefront sensor (SH-WFS) (Jorgenson
+& Aitken 1992, 1994), with further improvement over a lin-
+ear predictor when signal-to-noise ratio (SNR) of wavefront
+sensing gets lower (Lloyd-Hart & McGuire 1996). The last
+few decades have seen signiﬁcant advances in both the the-
+ory and applications of ANNs (LeCun et al. 2015), among
+which the Long Short-Term Memory (LSTM) network is
+well-suited to time series modeling and prediction by design
+(Hochreiter & Schmidhuber 1997; Gers et al. 1999).
+2
+ARTIFICIAL NEURAL NETWORKS
+ANNs are computational models inspired by biological neu-
+ral networks. They are composed of a series of computing
+elements called neurons that are interconnected in a layered
+structure. Each neuron receives inputs, either as an input
+to the entire network or as outputs of connected neurons in
+the former layer, then transmits mathematically processed
+input information to connected neurons in the next layer.
+This forward transmission continues until the ﬁnal output
+neurons are reached. Information ﬂow in each type of ANNs
+is thus speciﬁed. A thorough tutorial on ANNs can be found
+in Goodfellow et al. (2016). A detailed description of a MLP
+network and its successful application for tomographic wave-
+front reconstruction can be found in Osborn et al. (2012).
+Long Short-Term Memory (LSTM) is an advanced ar-
+chitecture of recurrent neural networks (RNNs) that are
+specially designed for processing sequential data (Graves
+2012). Compared with MLPs with forward transmissions
+only, RNNs have dynamic feedback connections and shared
+parameters across all time steps. An internal state vector is
+transferred through time to maintain memories. LSTMs can
+especially cope well with long-term dependencies (Goodfel-
+low et al. 2016), which otherwise renders training in normal
+RNNs much more diﬃcult. It has been successfully applied
+in ﬁelds such as speech recognition (Graves et al. 2013),
+machine translation (Sutskever et al. 2014) and image cap-
+tioning (Karpathy & Li 2014). LSTMs have two desirable
+features for wavefront prediction:
+• No user input. No prior knowledge of the atmosphere
+is assumed for the training process. No user input is required
+either during application.
+• No user tuning. The ﬂuid nature of the memory el-
+ements within allows the network to learn temporal be-
+haviours of turbulence of varied time constants and to adapt
+to changes in these without user tuning. The nonlinearity
+of LSTMs enables the agility and robustness when dealing
+with non-frozen ﬂow turbulence evolution (such as ﬂuctua-
+tions in wind velocities), WFS noise or change of turbulence
+strength.
+3
+METHODOLOGY
+We exploit the potential of ANNs for wavefront prediction
+in numerical simulations based on a SCAO system. More
+speciﬁcally, the ANN predictor is trained in simulation to
+predict uncorrected wavefront slopes at the next time step
+based on a time series of past noisy slope measurements by
+a SH-WFS operating in open loop. The simulated SCAO
+system serves two purposes. The wavefront sensing subsys-
+tem is used to generate a series of time sequences of wave-
+front slopes as training data, with the last frame of slopes
+in each sequence being the training target. After training,
+the predictor is incorporated into the AO correction loop for
+evaluation.
+To quantify the eﬃcacy of the ANN predictor, we com-
+pare AO corrections in terms of root-mean-square wavefront
+errors (RMS WFE) under three operating conditions, de-
+pending on which WFS measurement is applied to DM at
+time step t:
+• Zero-delay or delay-compensated loop, where the cur-
+rent measurement st is used immediately.
+• One-frame delay loop, where the prior measurement
+st−1 is used.
+MNRAS 000, 1–10 (2019)
+
+
+Wavefront prediction using ANNs for open-loop AO
+3
+• ANN predictive loop, where the predicted current mea-
+surement ˜st from (s1, s2, ... , st−1) is used.
+3.1
+SCAO simulation
+The AO simulation tool used is Soapy (Simulation ‘Optique
+Adaptative’ with Python) (Reeves 2016). Soapy is highly
+modular, enabling both end-to-end simulations and fast ex-
+perimentation using a subset of its modules. New modules
+can also be easily integrated. The architecture of the sim-
+ulated SCAO system is shown in Fig. 1. Throughout the
+simulation we use a point source at inﬁnity to act as a natu-
+ral guide star (GS). To generate the training data, one single
+turbulence layer is assumed. Here, the use of a single layer is
+for the ease of training. We will show that a ANN predictor
+trained using one turbulence layer is capable of predicting
+in multi-layer conditions. A large random phase screen with
+Von Karman statistics is generated within the atmosphere
+module Atmos at the start of each loop run. Pure frozen ﬂow
+is assumed, under which the large phase screen is translated
+over the telescope aperture with a given velocity due to the
+wind. At each time step, a smaller portion of the large phase
+screen, the part of which is seen by the telescope aperture,
+is output to SH-WFS. SH-WFS then outputs measured noisy
+wavefront slopes from the image plane using thresholding
+centre of gravity (TCoG). The thresholding value is a ﬂux
+cutoﬀdescribed by a factor of the maximum intensity within
+a subaperture to suppress photon noise and readout noise.
+A single frame delay can be used in Soapy simulations (the
+center loop in Fig. 1) to account for the inevitable WFS
+integration time. This time lag between wavefront measure-
+ment and correction can be compensated either by apply-
+ing slope measurements immediately (the lower loop) or by
+sending the prior slopes to a ANN predictor to extrapolate
+the current measurements (the upper loop). A reconstructor
+module (Recon) combines noisy slopes (either delayed, pre-
+dictive, or delay-compensated) and control matrix generated
+during calibration to output DM commands, which are used
+by DM to generate the corrected phase. RMS error between
+the phase distortion and DM shape is then output as RMS
+WFE.
+Principal simulation parameters are listed in Table 1.
+The conﬁguration is adopted from CANARY low-order
+SCAO mode (Morris et al. 2010). We train the predictor
+under similar atmospheric and system conditions where it
+will be applied. The impact of the WFS SNR on ANN train-
+ing and the predictor’s robustness against changes in input
+statistics will be explored in Section 4.
+3.2
+ANN training
+3.2.1
+Training data generation
+The wavefront sensing subsystem consisting of Atmos and
+SH-WFS modules is used to generate the ﬁrst 100,000 training
+samples. Each sample is a time sequence of thirty 72-element
+vectors (s1, s2, ... , s30), with each vector, si, being the X and
+Y slope for each of the 36 subapertures. (s1, s2, ... , s29) will
+be ANN inputs sequentially during training, and s30 will be
+the targeted output. Wind velocity corresponding to each
+sample is a random vector, with its magnitude uniformly
+Table 1. Principal parameters used with the Soapy SCAO sim-
+ulation for ANN training and optimisation.
+Module
+Parameter
+Value
+System
+Frequency
+150 Hz
+Pure delay
+0.0067 s
+Throughput
+1
+Gain
+1
+Atmosphere
+# of phase screens
+1
+Wind speed
+10-15 m/s
+Wind direction
+0-360°
+r0 @ 500 nm
+0.16 m
+L0
+25 m
+Telescope
+Diameter
+4.2 m
+Central obscuration
+1.2 m
+SH-WFS
+GS magnitude
+10
+# of subapertures
+7×7 (36 active)
+Readout noise
+1 e−RMS
+Photon noise
+True
+Wavelength
+600 nm
+Thresholding value
+0.1
+Piezo DM
+# of actuators
+8×8
+sampled from the range 10 to 15 m/s and its direction uni-
+formly sampled from the range 0 to 360°. Wind velocity is
+constant within each sequence.
+We then reverse each sequence to form the other half
+of the training set, with the last frame being the ﬁrst and
+ﬁrst being last. This corresponds to reversing the wind direc-
+tion. We use this data augmentation approach to introduce
+variability in training data to improve model robustness. Re-
+sulting training input set and target set are tensors of shape
+(2 × 105, 29, 72) and (2 × 105, 72) respectively. The amount
+of training data is decided by trial and error to match both
+ANN architecture complexity and problem complexity to
+balance between training data ﬁtting and model generalisa-
+tion. No further training data pre-processing is implemented.
+3.2.2
+ANN training and optimisation
+We use Keras (Chollet et al. 2015) library written in Python
+for ANN training. The ANN architecture consists of stacked
+LSTM cells and a ﬁnal fully-connected (FC) output layer.
+The depth of neural networks is associated with the depth of
+representations that can be learnt (Goodfellow et al. 2016),
+thus the stacking of LSTM cells in our case.
+The ANN topology comprising two LSTM cells and a
+FC layer is shown in Fig. 2. The display is unrolled in time,
+which means all components in the same colour (or row)
+are duplicates in time and essentially identical to inputs at
+any time step. At each time step t (t ≥2), the network can
+output a slope prediction ˜st based on the current input st−1
+and two state vectors, the cell state (also called the internal
+state) and the cell output (also called the hidden state).
+Both states are either initialised as all-zero vectors (t = 2)
+or updated at each time step (t > 2) using information in
+the input sequence so far.
+Parameters (also called trainable weights) of the net-
+work determine how inputs are processed mathematically
+layer by layer. ANN training is the process to optimise these
+MNRAS 000, 1–10 (2019)
+
+
+4
+Xuewen Liu et al.
+Atmos
+ANN 
+predictor
+Recon
+DM
+SH-WFS
+Predicted
+slopes
+Delay
+Recon
+Recon
+DM
+DM
+Delayed
+slopes
+Zero-delay
+slopes
+t
+v
+Phase
+distortion
+WFE
+WFE
+WFE
+Figure 1. Composition of the simulated SCAO system and its data ﬂow. RMS wavefront error of the predictive correction (upper) is
+expected to be between the delayed (center) and delay-compensated (lower) corrections.
+LSTM
+……
+0
+0
+……
+LSTM
+……
+……
+0
+0
+˜S30
+S1
+S2
+FC layer
+˜S2
+˜S3
+……
+……
+……
+……
+……
+……
+……
+……
+SN−1
+˜SN
+S29
+t = 2
+t = 3
+t = 30
+t = N
+……
+……
+……
+Figure 2. The ANN predictor structure unrolled in time. The
+predictor can start predicting from the 2nd time step, although
+initial predictions can be unstable and inaccurate due to limited
+temporal information. The two LSTM cells have the same inner
+structure, but diﬀerent sets of parameters after training.
+parameters iteratively to minimise a training error. These
+parameters are initialised using a Gaussian distribution. 10%
+dropout is deployed for each LSTM cell (Gal & Ghahramani
+2016). 10% training samples form a validation set. The re-
+maining 90% samples are randomly split into batches of size
+128 before each epoch. The training error is mean squared
+error (MSE) between the targeted output s30 and the actual
+output ˜s30 evaluated and averaged on the current batch. The
+Adam optimisation algorithm is used to optimise the net-
+work parameters in a direction that minimises the training
+error (Kingma & Ba 2014). It is a ﬁrst-order gradient de-
+scent algorithm and features adaptive learning rate. During
+one epoch, every batch is evaluated once and the network
+parameters are updated accordingly multiple times. At the
+end of each epoch, the updated network is evaluated on the
+validation set. The initial learning rate is 1e-3. If MSE of
+the validation set shows no improvement for consecutive 10
+epochs, the learning rate is reduced to its 1/5 unless reaching
+1e-5. The reduced learning rate allows only small updates of
+the network parameters to prevent this optimisation pro-
+cess from early stagnation. Training is terminated after 40
+epochs, at which point both training and validation errors
+have stagnated.
+The ANN optimisation process, also called hyperparam-
+eter tuning, is coupled with ANN training. Hyperparameters
+determine either the structure of the network or the training
+process. These are ﬁxed before training starts. We tune two
+hyperparameters that determine the physical capacity of the
+network: number of stacked LSTM cells (1 or 2) and length
+Table 2. Breakdown of computational load within the optimised
+ANN architecture.
+Module
+Input vector size
+Output vector size
+FLOPs
+First LSTM
+72
+247
+630,344
+Second LSTM
+247
+226
+855,184
+FC
+226
+72
+32,544
+Total
+1,518,072
+of output vectors of each LSTM cell (a random integer be-
+tween 100 and 250, diﬀerent for each cell). Every time a set
+of these two hyperparameters are chosen, the model is re-
+compiled, re-initialised and re-trained as is described above.
+The model that achieves the lowest validation MSE at the
+end of the 40th epoch is composed of two LSTM cells and
+a ﬁnal FC layer (as is shown in Fig. 2). The output vector
+of the ﬁrst LSTM cell has 247 elements and the second cell
+has 226 element. The resulting model has 761,000 trainable
+parameters in total. Breakdown of the number of ﬂoating
+point operations (FLOP) of the optimised ANN structure
+is shown in Table 2. The resulting computational load is
+2.3×108 FLOPS (FLOP per second) for the CANARY-scale
+7 × 7 subaperture system operating at 150 Hz.
+4
+RESULTS
+After training, the optimised predictor is inserted between
+SH-WFS and Recon to form part of a predictive correction
+loop. From this stage, the parameters within the network
+are ﬁxed and inputs are now processed in a deterministic
+way. We test the predictor’s generalisation and extrapolation
+capabilities in ﬁve diﬀerent scenarios:
+(i) The predictor is tested on unseen data generated
+within the parameter boundaries used for the training
+regime.
+(ii) GS magnitude is increased from 10 (on which the
+predictor is trained) to 6, which increases the SNR of in-
+put slopes. In this scenario, we also investigate the SNR of
+training data on the predictor’s performance.
+(iii) A time-variant turbulence is considered by changing
+either the wind speed or the direction every 10 frames (15
+Hz) after the predictor stabilises.
+(iv) A multi-layer turbulence is considered to test the pre-
+dictor’s ability to track multiple wind vectors.
+(v) We extend our approach to account for a more real-
+istic two-frame latency, where we trained a separate ANN
+MNRAS 000, 1–10 (2019)
+
+
+Wavefront prediction using ANNs for open-loop AO
+5
+2
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+235
+240
+245
+250
+255
+260
+265
+RMS phase error (nm)
+Delay
+Prediction
+Zero-delay
+Figure 3. Mean RMS WFEs in an AO loop averaged across
+1,000 test sequences. The GS used to generate test slopes has
+a magnitude of 10, which is the same as that for training. The
+predictor is tested within the training regime, though this test set
+had not been observed by the predictor before. Wind speed is 15
+m/s in a single direction.
+predictor to predict two frames in advance directly, and com-
+pare that with applying the single-latency predictor twice.
+In most scenarios, statistics of the input slopes to the predic-
+tor are diﬀerent to what was used during training. In each
+scenario, we use 1,000 test slope sequences each of 100 frames
+(0.67 s). We have found that our predictor will remain sta-
+ble during a 2-minute period if both system and turbulence
+parameters remain unchanged, which is the case in most of
+the scenarios. Thus, in this paper we only include results
+obtained from 100-frame sequences to strengthen diﬀerent
+aspects of the performance. The predictor’s memory (both
+internal and hidden states) is zeroed before a new slope se-
+quence. The predictor is expected to build up its memory
+and output stable predictions in 30 frames as the training is
+designed. Other simulation parameters are mostly the same
+as listed in Table 1, unless stated otherwise.
+4.1
+Performance within the ANN training regime
+Fig. 3 shows RMS WFEs averaged over 1,000 test atmo-
+spheric turbulence sequences. Shaded areas indicate the
+standard error of the mean RMS WFE (Hughes & Hase
+2010). The atmospheric statistics of this test set lie within
+the bounds of the training regime, though the test set did
+not form part of the training data set and had not been
+observed by the network before. Wind speed is 15 m/s in
+a single direction. All other simulation parameters are the
+same as during training, thus in this case the predictor is ex-
+pected to reach its optimal performance. The predictor out-
+put stabilises after approximately 12 frames. The prediction
+is stable after this time span as the input statistics remain
+unchanged afterwards. This implies using shorter sequences
+for training and thus an alternative network that converges
+faster is possible. Mean RMS WFEs of the delayed, predic-
+tive and delay-compensated correction loop (averaged after
+the 12th frame and across all sequences) are 253.9 nm, 244.3
+2
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+155
+160
+165
+170
+175
+180
+185
+RMS phase error (nm)
+Noise-free predictor 
+Mag-8 predictor 
+Mag-10 predictor
+Delay
+Zero-delay
+Figure 4. Mean RMS WFEs in an AO loop averaged across 1,000
+test sequences. The GS used to generate test slopes has a magni-
+tude of 6, which increases the SNR of inputs to the predictor that
+is trained with a GS of magnitude 10 (Mag-10) compared with
+during its training. Wind speed is 15 m/s in a single direction. We
+also compare Mag-10 predictor using the same set of input slopes
+with another two predictors that are trained with GS magnitude
+8 (Mag-8) and trained without WFS noise (Noise-free)
+.
+Table 3. Training conditions and structures of the three ANN
+predictors.
+ANN Predictor
+Mag-10
+Mag-8
+Noise-free
+GS magnitude during training
+10
+8
+-
+WFS SNR during training
+17.6
+52.5
+∞
+# of neurons of the ﬁrst LSTM
+247
+247
+162
+# of neurons of the second LSTM
+226
+203
+114
+FLOPS @ 150Hz frame rate (×108)
+2.3
+2.1
+0.9
+nm and 243.4 nm respectively, showing an overall perfor-
+mance improvement brought by the predictor.
+4.2
+Performance with varying WFS SNR
+In Fig. 4 we show the results from three ANNs when observ-
+ing a bright guide star of magnitude 6. In addition to the
+ANN used in section 4.1 that was trained on a guide star
+of magnitude 10, we include results from two networks have
+been trained at diﬀerent signal to noise levels. These three
+predictors are denoted as Mag-10, Mag-8 (trained with a
+GS of magnitude 8) and Noise-free (trained without WFS
+noise) respectively. The training procedure and other simu-
+lation parameters were the same as detailed in Section 3.2,
+except the thresholding value that was reduced to 0.02 for
+the Mag-8 predictor, and 0 for the Noise-free predictor.
+The resulting ANN architectures and computational loads
+are listed in Table 3. For each network, we see that predic-
+tion error decreases until the 20th frame, after which the
+performance of each ANN stabilises. However, we note that
+the ANN trained with the lowest SNR performs far better
+than the ANNs trained in higher SNR regime and this be-
+haviour was observed irrespective of guide star magnitude.
+In Fig. 5 we show the RMS slope error (mas) per sub-
+MNRAS 000, 1–10 (2019)
+
+
+6
+Xuewen Liu et al.
+Noise-free
+5
+6
+8
+9
+10
+7
+30
+40
+50
+RMS slope error per subaperture (mas)
+Delay
+Noise-free predictor 
+Mag-8 predictor
+Mag-10 predictor
+Test guide star magnitude
+Figure 5. RMS slope error (mas) per subaperture compared with
+zero-delay measurements by SH-WFS as the WFS SNR varies. This
+quantity is the root of the ANN training metric. All predictors
+have lower errors around the corresponding training regimes.
+Noise-free
+5
+6
+8
+9
+10
+7
+80
+90
+RMS slope error per subaperture (mas)
+Delay
+Noise-free predictor 
+Mag-8 predictor 
+Mag-10 predictor 
+Zero-delay
+Test guide star magnitude
+Figure 6. RMS slope error (mas) per subaperture with refer-
+ence to measurements by the idealised WFS, which removes noise,
+aliasing and centroiding errors in the measurement of the ﬁrst 36
+Zernike orders compared with zero-delay measurements by SH-
+WFS. This along with Figs. 4 and 5 demonstrates the ﬁltering of
+aliasing and centroiding errors apart from the reduction in band-
+width error brought by Mag-10 predictor.
+aperture compared with zero-delay measurements as the
+WFS SNR changes. This quantity is the root of the ANN
+training metric. For each guide star magnitude, we generated
+1,000 slope sequences each of 100 frames. Values shown in
+Fig. 5 give the mean slope error across all subapertures af-
+ter the 30th frame (by when all predictors have stabilised
+under all SNR conditions) in all sequences. All predictors
+have lower errors around the corresponding training regimes
+compared with slopes with one-frame delay, which shows
+the prediction power of ANN predictors of such type. In
+lower SNR regime (GS magnitude > 6), Mag-10 predictor
+achieves lowest slope errors. However, at smaller GS magni-
+tudes (GS magnitude ≤6) or in the noise-free condition, the
+performance of the Mag-8 predictor is closer to that of the
+Mag-10 predictor, rather than the Noise-free predictor.
+This is inconsistent with Fig. 4.
+To assist understanding of this discrepancy in the
+brighter regime, we compare slope errors with reference to
+the slope measurements using an idealised WFS where cen-
+troiding and aliasing errors have been minimised. This WFS
+is deﬁned as follows. The phase screen seen by the telescope
+aperture at each time step is ﬁrstly decomposed into its low-
+and high-order components,
+φ = φl + φh =
+36
+Õ
+i=2
+aizi + φh,
+(1)
+where ai = zT
+i φ, zi is the ith Zernike term in Noll’s notation
+(Noll 1976). The number of Zernikes is chosen to match the
+structure of the subapertures. Measurements of φ by the
+ideal WFS is computed as
+si ≡Da,
+(2)
+where D is a perfectly calibrated interaction matrix and a is
+the Zernike vector (a2, a3, ..., a36) given in Eq. 1. Within D,
+the slope measurements of each Zernike term are calculated
+directly from the corresponding high-resolution phase grid
+instead of from the WFS image plane.
+Fig. 6 shows the RMS slope error with reference to
+the ideal WFS measurements in each correction loop. Er-
+rors in zero-delay measurements are non-zero due to alias-
+ing, centroiding and noise errors compared to the ideal WFS.
+Among the three predictors, Mag-10 predictor achieves sig-
+niﬁcantly lower slope errors under all SNR conditions, which
+is now consistent with Fig. 4. In addition we see that in low-
+SNR regimes, Mag-10 predictor has even lower errors than
+zero-delay measurements. This implies that the reduction in
+WFE brought by Mag-10 predictor also accounts for some
+aliasing and/or centroiding errors in addition to the reduc-
+tion in bandwidth error. We think that this is due to being
+exposed to much lower SNR training data where the tem-
+poral correlations within the data are less obvious and noise
+terms must be learnt to be ignored.
+Prediction error σpred is deﬁned as the RMSE between
+WFEs in the predictive loop and in the zero-delay loop,
+σpred =
+q
+WFEpred
+2 −WFEzero-delay
+2,
+(3)
+where WFE∗is the average after the 30th frame and across
+all sequences. Bandwidth error is deﬁned in a similar fashion,
+σBW =
+q
+WFEdelay
+2 −WFEzero-delay
+2.
+(4)
+σpred of Mag-10 predictor ranges from 40.0 nm to 19.9 nm,
+decreasing as the WFS SNR is lowered due to the increas-
+ing ﬁltering of aliasing and/or centroiding errors. The mean
+value of bandwidth error across all SNR conditions is 78.3
+nm, with a standard deviation of 4.4 nm. This quantity also
+decreases slightly as GS gets fainter, due to the increasing
+correlation between bandwidth error and noise error.
+In the following three scenarios, we show the results ob-
+tained with our optimal Mag-10 predictor only. We also use
+a brighter guide star of magnitude 6 to reduce the perfor-
+mance variations brought by wavefront sensor noise.
+MNRAS 000, 1–10 (2019)
+
+
+Wavefront prediction using ANNs for open-loop AO
+7
+4.3
+Performance with time-variant wind velocity
+In the above scenarios, we have assumed stationary turbu-
+lence. In this section, we demonstrate the agility and ro-
+bustness of our ANN predictor against ﬂuctuations in wind
+velocity.
+Here we use a synthetic wind speed sequence (upper
+panel in Fig. 7) in a relatively short time scale of 100 con-
+secutive WFS frames (0.67 s). Wind speed changes every 10
+frames (15 Hz) within 10 and 15 m/s after the ﬁrst 20 frames
+during which time the predictor stabilises. This ﬂuctuation
+is reﬂected in the dynamics of the delayed correction, as a
+faster translation of the phase screen induces increased phase
+variations between adjacent frames under frozen ﬂow.
+Fig. 8 demonstrates robustness of the predictor against
+wind direction ﬂuctuations between 0 and 45 degrees every
+10 frames (upper panel). This corresponds to a maximum
+instantaneous change of 8.4 m/s in wind speed along a single
+direction.
+Recently van Kooten et al. (2019) have used typical
+wind proﬁles from the Thirty Metre Telescope (TMT) site
+to demonstrate eﬀects of wind velocity variations in a data-
+driven linear minimum mean square error (LMMSE) pre-
+dictor over a period of 5 seconds in numerical simulations.
+Wind data are linearly interpolated to system frequency to
+allow for per-frame ﬂuctuation. Two adaptive variations,
+resetting-batch LMMSE and forgetting LMMSE, along with
+LMMSE were tested. Compared with these linear predictors,
+variances in WFEs of the ANN predictive loop before and
+after the disturbance are on the same order as that of the
+delay-compensated loop. This robustness can be explained
+as the ANN predictor is allowed to use more spatial and tem-
+poral information when making inferences. Furthermore, the
+updating and forgetting mechanisms of our predictor are not
+ﬁxed, but can constantly self-adjust according to the inputs,
+which by design allows for more ﬂexible control on data ﬂow.
+4.4
+Performance with multi-layer turbulence
+Though we train the predictor with a single turbulence layer,
+there usually exists several layers at high altitudes in addi-
+tion to a strong ground layer (Farley et al. 2018, 2019). It is
+thus meaningful to test the predictor’s sensitivity to multiple
+layers moving with diﬀerent velocities.
+Here we show the results obtained with ESO (Euro-
+pean Southern Observatory) median 35-layer proﬁle. r0 is
+0.157 m, slightly worse than during ANN training. We gen-
+erated 1,000 slope sequences each of 100 frames with this
+proﬁle. For comparison, we also generated the same amount
+of test data of a single ground layer and of a four-layer pro-
+ﬁle (detailed in Table 4.4), both moving at 9.21 m/s (slightly
+slower than the training range), which is equivalent to the
+dynamics of the 35-layer proﬁle.
+Fig. 9 shows residual WFEs when wind vectors of multi-
+layer proﬁles (either the 4-layer or the 35-layer) move in
+diﬀerent directions. For the 35-layer proﬁle, the moving di-
+rection of each layer is a random integer between 0 and 360
+degrees. For the 4-layer proﬁle, wind directions are listed in
+Table 4.4. The delayed and the delay-compensated correc-
+tion loops behave similarly regardless of the number of lay-
+ers, thus only values obtained from the single-layer proﬁle
+are shown here. Mean RMS WFEs of the delayed, 35-layer
+Table 4. Four-layer turbulence proﬁle used within test dataset. r0
+is 0.157 m. L0 is 25 m. Two sets of wind directions corresponding
+to Figs. 9 and 10 respectively are examined.
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+Height (m)
+0
+4000
+10000
+15500
+Relative strength
+0.65
+0.15
+0.10
+0.10
+Wind speed (m/s)
+7.6
+9.5
+11.4
+15.2
+Wind direction (degrees)
+0
+330
+135
+240
+0
+0
+0
+0
+predictive, 4-layer predictive, 1-layer predictive and delay-
+compensated correction loop after the 20th frame are 167.9
+nm, 166.4 nm, 164.6 nm, 161.9 nm and 159.2 nm respec-
+tively.
+Fig. 10 shows improved ANN performance when all lay-
+ers in either multi-layer proﬁle move in the same direction
+(wind speeds are the same as used in Fig. 9). Mean RMS
+WFE of the 35-layer predictive loop decreases to 164.0 nm,
+slightly better than the 4-layer predictive loop when wind
+vectors are largely distinct from each other. Mean RMS
+WFE of the 4-layer predictive loop decreases to 162.4 nm,
+approaching that of the 1-layer predictive loop.
+We think that the wind directions adopted represent
+two extreme conditions, and that performance with real tur-
+bulence proﬁles would fall within these two cases. These
+results show that the predictor trained on a single layer
+frozen-ﬂow conditions is capable of providing performance
+improvement even when complex proﬁles with random wind
+directions are encountered.
+4.5
+Performance with two-frame latency
+So far we have considered only single-frame delay in an AO
+loop, where we have accounted for WFS integration time
+only but ignored the time taken for real-time processing and
+the update of the surface shape of the DM.
+In Fig. 11 we show the ANN performance when a more
+realistic loop delay of two frames is considered. We trained
+a separate ANN that was designed to predict two frames in
+advance in a single step. The training dataset described in
+Section 3.2.1 was re-utilised in the way that (s1, s2, ... , s28)
+in each sequence is the ANN input and s30 is the training
+target. The training and hyperparameter searching setup fol-
+lows that described in Section 3.2.2. The resulting network
+comprises two stacked LSTM cells and a ﬁnal FC layer. The
+output vector sizes of the two LSTMs are 122 and 171 re-
+spectively, with a computational load of 0.9 × 108 FLOPS.
+The resulting mean RMS WFE of this single-step predictive
+loop after the 30th frame is signiﬁcantly reduced to 166.9
+nm, compared with 225.6 and 157.1 nm of the two-frame
+delayed and zero-delayed loop respectively.
+As a comparison, the single-frame predictor was also
+used twice to provide a two-frame prediction: ﬁrst, the mea-
+sured (s1, s2, ... , st) (t ≥2) is fed into the predictor to gen-
+erate the predicted ˜st+1 as it was designed; second, ˜st+1 is
+treated as its truth value st+1 and forms part of the ANN
+input vector (s1, s2, ... , st, ˜st+1), which is then used to gener-
+ate ˜st+2. This resulted in a WFE of 174.4 nm, worse than
+the two frame prediction, however still signiﬁcantly better
+than the two-frame delay.
+MNRAS 000, 1–10 (2019)
+
+
+8
+Xuewen Liu et al.
+10
+11
+12
+13
+14
+15
+wind speed (m/s)
+2
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+150
+160
+170
+180
+190
+RMS phase error (nm)
+Delay
+Prediction
+Zero-delay
+Figure 7. Robustness of the predictor against wind speed ﬂuctu-
+ations between 10 and 15 m/s every 10 frames. Wind direction is
+0 degree. Guide star magnitude is 6.
+0
+15
+30
+45
+wind direction (deg)
+2
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+150
+160
+170
+180
+190
+RMS phase error (nm)
+Delay
+Prediction
+Zero-delay
+Figure 8. Robustness of the predictor against wind direction ﬂuc-
+tuations between 0 and 45 degrees every 10 frames. Wind speed
+is 15 m/s. Guide star magnitude is 6.
+2
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+157
+160
+163
+166
+169
+172
+175
+RMS phase error (nm)
+Prediction-1 layer
+Prediction-4 layers
+Prediction-35 layers
+Delay
+Zero-delay
+Figure 9. ANN performance with multiple turbulence layers mov-
+ing along diﬀerent directions. Wind speeds of either the 1- or 4-
+layer proﬁle are scaled to maintain the same dynamics as that of
+the 35-layer proﬁle. r0 is 0.157 m.
+2
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+157
+160
+163
+166
+169
+172
+175
+RMS phase error (nm)
+Prediction-1 layer
+Prediction-4 layers
+Prediction-35 layers
+Delay
+Zero-delay
+Figure 10. ANN performance with multiple turbulence layers
+moving along the same direction. Compared with Fig. 9, the ANN
+performance suﬀers from the increased number of wind vectors,
+but mainly from the variety among those vectors.
+5
+ON-SKY IMPLEMENTATION
+The results presented within this paper are based on simu-
+lations, which do not consider many of the practical issues
+relating to the implementation of the LSTM architecture
+within a real AO system. In this section we discuss issues
+relating to calibration and control within a real system.
+The training method presented here uses simulated
+Shack-Hartmann WFS slope data but could be applied to
+real data from any WFS data. However, the sensitivity of
+the ANN performance to the training regime and the re-
+quirement for a large number of wind velocities required for
+a robust ANN training means that the collection of a real
+WFS datasets may take a signiﬁcant amount of time. It may
+therefore be best to initially train in simulation and convert
+real WFS slopes to ensure that the subaperture geometry
+and pixel scale matches that encoded within the ANN. Un-
+like other ANN approaches proposed for multiple guide star
+AO (Osborn et al. 2012), the single WFS LSTM ANN does
+not require retraining for diﬀerent targets, greatly reduc-
+ing the calibration overhead of implementation within a real
+system.
+The ANN predictor proposed here may not be appli-
+cable to all closed-loop AO systems where imperfect POLC
+(pseudo open loop control) can introduce additional noise
+terms within the system, aﬀecting performance and loop
+stability (Gilles 2005). To adapt the training regime here
+to closed-loop operation the training dataset would have to
+be expanded to include the range of potential closed-loop
+gain values. This will increase both training time and the
+size of the resulting ANN, with no guarantee that the re-
+sulting ANN would be more resistant to the errors that can
+MNRAS 000, 1–10 (2019)
+
+
+Wavefront prediction using ANNs for open-loop AO
+9
+3
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+Frame number
+150
+160
+170
+180
+190
+200
+210
+220
+230
+RMS phase error (nm)
+Two-frame delay
+Single-frame delay
+Zero-delay
+Two-step prediction
+Single-step prediction
+Figure 11. In a simulated system with a two-frame latency, the
+methodology adopted for the single-latency prediction is extended
+to training a separate ANN predictor (single-step prediction). In
+this case, the single-latency predictor can also be used twice (two-
+step prediction), albeit with worse performance. Both predictors
+improve the system performance signiﬁcantly. The blue line rep-
+resenting the single-frame delay performance is the same as that
+shown in Fig. 4, and is depicted here for comparison with the
+two-frame delay performance. Guide star magnitude for test is 6.
+Wind speed is 15 m/s along a single direction.
+aﬀect POLC stability such as misalignments and open-loop
+DM errors.
+An on-sky implementation of the ANN presented here
+requires an additional processing step for each WFS be-
+fore reconstruction within the system. The system simulated
+here uses a 7 × 7 subaperture Shack-Hartmann system that
+we selected such that can be rapidly trained and tested.
+Furthermore, wind proﬁles can be recovered from recorded
+oﬀ-axis WFS data of the CANARY demonstrator (Laidlaw
+et al. 2019). By matching the conﬁguration of CANARY,
+future comparison of multi-layer predictions using real data
+and in simulation is feasible. Extending beyond this low-
+order system is possible but implies additional training time
+and an increase in real-time computational load. Due to the
+hyperparameter tuning approach adopted here, the precise
+computational load of a higher-order system cannot be eas-
+ily predicted, but implementation of this approach within
+any existing astronomical non-XAO system is feasible using
+existing hardware. There do however exist possibilities to
+reduce the computational load, including operating in actu-
+ator space where computational load is lower (Basden et al.
+2019), or taking advantage of the sparsity of the ANN. The
+technique proposed here inherently scales to multiple guide
+star systems through parallelism.
+6
+CONCLUSIONS
+We have shown in extensive numerical simulations the po-
+tential of artiﬁcial neural networks as a nonlinear framework
+for wavefront prediction. The memory elements within the
+LSTM network give it the ability to learn information such
+as wind velocity vectors from the data and to use that in-
+formation in its prediction. The ﬂuid nature of the memory
+allows the network to adapt to changes in such information
+without user tuning.
+The residual wavefront error of the simulated 7 × 7 sub-
+aperture SCAO system with one frame delay improves sig-
+niﬁcantly after the predictor is incorporated irrespective of
+guide star magnitude and wind velocity. In addition to ac-
+curately predicting the wavefront we have also provided ev-
+idence that the ANN predictor also compensates for some
+centroiding and/or aliasing errors that can be temporally
+ﬁltered from the wavefront. This behaviour however is de-
+pendent on the ANN training regime and was only observed
+when the system was trained on a low SNR 10th magni-
+tude guide star. The selection of the training regime has the
+greatest impact on the performance of the ANN prediction.
+We have shown that the ANN predictor is robust to
+changes in wind velocity on sub-second timescales, and that
+the ANN approach taken within this paper is transferable to
+systems with a two-frame delay. The ANN predictor trained
+on a single atmospheric turbulence layer is also capable of
+predicting under more complex conditions with multiple lay-
+ers with independent wind vectors, albeit with reduced per-
+formance. Whilst we believe it is likely that a more realistic
+multi-layer training environment and/or the use of multiple
+wavefront sensors to allow identiﬁcation of layer altitudes
+will improve ANN performance on multi-layer turbulence,
+this is subject to further study. Our next steps will be to
+investigate ANN performance on recorded CANARY data
+to investigate ANN stability and training in a real-world
+system.
+ACKNOWLEDGEMENTS
+The authors gratefully acknowledge James Osborn from
+CfAI, Durham University for his valuable suggestions re-
+garding the manuscript. We thank sincerely Ollie Farley
+from CfAI for the thought-provoking discussions with him.
+We sincerely appreciate the comments from the reviewer,
+which helped us improve the paper. X. Liu is funded by
+Durham University through their doctoral scholarship pro-
+gram and China Scholarship Council. CGG and JDCJ ac-
+knowledge ﬁnancial support from the I+D 2017 project
+AYA2017-89121-P and JDCJ acknowledges support from
+the European Unionˆa˘A´Zs Horizon 2020 research and in-
+novation programme under the H2020-INFRAIA-2018-2020
+grant agreement No 210489629.
+REFERENCES
+Andersen D. R., Jackson K. J., Blain C., Bradley C., Correia C.,
+Ito M., Lardi`ere O., V´eran J.-P., 2012, Publications of the
+Astronomical Society of the Paciﬁc, 124, 469
+Basden A. G., Jenkins D., Morris T. J., Osborn J., Townson M. J.,
+2019, Monthly Notices of the Royal Astronomical Society, 486,
+1774
+Chollet F., et al., 2015, Keras, https://keras.io
+Correia C., Jackson K., V´eran J.-P., Andersen D., Lardi`ere O.,
+Bradley C., 2014, J. Opt. Soc. Am. A, 31, 101
+Farley O. J. D., Osborn J., Morris T., Sarazin M., Butterley T.,
+Townson M. J., Jia P., Wilson R. W., 2018, Monthly Notices
+of the Royal Astronomical Society, 481, 4030
+MNRAS 000, 1–10 (2019)
+
+
+10
+Xuewen Liu et al.
+Farley O. J. D., Osborn J., Morris T., Fusco T., Neichel B., Cor-
+reia C., Wilson R. W., 2019, Monthly Notices of the Royal
+Astronomical Society, 488, 213
+Gal Y., Ghahramani Z., 2016, in Proceedings of the 30th Interna-
+tional Conference on Neural Information Processing Systems.
+NIPS’16. pp 1027–1035
+Gers F. A., Schmidhuber J., Cummins F., 1999, in 1999 Ninth In-
+ternational Conference on Artiﬁcial Neural Networks ICANN
+99. (Conf. Publ. No. 470). pp 850–855
+Gilles L., 2005, Appl. Opt., 44, 993
+Goodfellow I., Bengio Y., Courville A., 2016, Deep Learning. MIT
+Press
+Graves A., 2012, PhD thesis, Technische Universit¨at at M¨unchen
+Graves A., Mohamed A., Hinton G. E., 2013, in 2013 IEEE In-
+ternational Conference on Acoustics, Speech and Signal Pro-
+cessing.
+Guyon O., Males J., 2017. http://arxiv.org/abs/1707.00570
+Hochreiter S., Schmidhuber J., 1997, Neural Computation, 9,
+1735
+Hughes I. G., Hase T. P. A., 2010, Measurements and their un-
+certainties. Oxford University Press
+Jackson K., Correia C., Lardi`ere O., Andersen D., Bradley C.,
+2015, Opt. Lett., 40, 143
+Jorgenson M. B., Aitken G. J. M., 1992, Opt. Lett., 17, 466
+Jorgenson M. B., Aitken G. J. M., 1994, ESO Conference and
+Workshop Proceedings, 48, 143
+Karpathy A., Li F., 2014, IEEE Transactions on Pattern Analysis
+and Machine Intelligence, 39, 664
+Kasper M., 2012, in Proc. of SPIE 8447. p. 84470B
+Kingma D., Ba J., 2014, in Proceedings of the 3rd International
+Conference on Learning Representations. http://arxiv.org/
+abs/1412.6980
+Kulcs´ar C., Raynaud H.-F., Petit C., Conan J.-M., 2012, Auto-
+matica, 48, 1939
+Laidlaw D. J., Osborn J., Morris T. J., Basden A. G., Gendron
+E., Rousset G., Townson M. J., Wilson R. W., 2019, Monthly
+Notices of the Royal Astronomical Society, 491, 1287
+Le Roux B., Conan J.-M., Kulcs´ar C., Raynaud H.-F., Mugnier
+L. M., Fusco T., 2004, J. Opt. Soc. Am. A, 21, 1261
+LeCun Y., Bengio T., Hinton G., 2015, Nature, 521, 436
+Lloyd-Hart M., McGuire P., 1996, ESO Conference and Workshop
+Proceedings, 54, 95
+Males J. R., Guyon O., 2018, J. Astron. Telesc. Instrum. Syst, 4,
+019001
+Morris T., et al., 2010, in 1st International Conference on Adap-
+tive Optics for Extremely Large Telescopes (AO4ELT). EDP
+Sciences, https://doi.org/10.1051/ao4elt/201008003
+Noll R. J., 1976, J. Opt. Soc. Am., 66, 207
+Osborn J., Juez F. J. D. C., Guzman D., Butterley T., Myers R.,
+Guesalaga A., Laine J., 2012, Opt. Express, 20, 2420
+Paschall R. N., Anderson D. J., 1993, Appl. Opt., 32, 6347
+Petit C., Conan J.-M., Kulcs´ar C., Raynaud H.-F., Fusco T., Mon-
+tri J., Rabaud D., 2006, in Proc. of SPIE 6272. p. 62721T
+Petit C., Conan J.-M., Kulcs´ar C., Raynaud H.-F., Fusco T., 2008,
+Opt. Express, 16, 87
+Petit C., et al., 2014, in Proc. of SPIE 9148. p. 91480O
+Poyneer L. A., V´eran J.-P., 2008, J. Opt. Soc. Am. A, 25, 1486
+Poyneer L. A., Macintosh B. A., V´eran J.-P., 2007, J. Opt. Soc.
+Am. A, 24, 2645
+Poyneer L. A., van Dam M., V´eran J.-P., 2009, J. Opt. Soc. Am.
+A, 26, 833
+Reeves A., 2016, in Proc. of SPIE 9909. p. 99097F
+Rudy A., Poyneer L. A., Srinath S., Ammons S. M., Gavel D.,
+2015. https://arxiv.org/abs/1504.03686
+Sivo G., et al., 2014, Opt. Express, 22, 23565
+Sutskever I., Vinyals O., Le Q. V., 2014, in , Advances in Neural
+Information Processing Systems 27. Curran Associates, Inc.,
+pp 3104–3112
+Wang L., Sch¨ock M., Chanan G., 2008, Appl. Opt., 47, 1880
+van Kooten M., Doelman N., Kenworthy M., 2019, J. Opt. Soc.
+Am. A, 36, 731
+This paper has been typeset from a TEX/LATEX ﬁle prepared by
+the author.
+MNRAS 000, 1–10 (2019)

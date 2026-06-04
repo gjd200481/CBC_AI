@@ -1,0 +1,107 @@
+﻿{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2023_Sensors_spatio_temporal_wavefront_prediction_AO.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2023-Wang-spatio-temporal-wavefront-prediction-AO",
+  "pages": 12,
+  "items": [
+    {
+      "kind": "Figure",
+      "number": 1,
+      "file": "Figure-1.png",
+      "page": 2,
+      "caption": "Figure 1. Schematic diagram of AO open-loop prediction correction system based on the distorted wavefront of atmospheric turbulence. The sampling frequency is set to 1000 Hz to facilitate comparison of subsequent high frame frequency sampling open-loop correction. During training, frame extraction is used to perform prediction under the condition of 500 Hz sampling frequency, then in",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 2,
+      "file": "Figure-2.png",
+      "page": 3,
+      "caption": "Figure 2. Schematic diagram of input and output settings for network model training. 2.2. Network Model Settings In this paper, we proposed a spatio-temporal prediction network based on deep learning, and the network structure diagram is shown in Figure 3. The network ﬁrst uses the spatial attention mechanism to pay attention to similar target features in each frame of",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 3,
+      "file": "Figure-3.png",
+      "page": 4,
+      "caption": "Figure 3. Our proposed spatio-temporal prediction network. (a) The overall architecture we propose; (b) the detailed structure we propose; (c) the ConvLSTM stepwise output mode. In addition, although the distorted wavefront of each frame input contains target fea- tures, these features contribute differently to the obtained ﬁnal prediction results. Similarly to the spatial attention mechanism, we use the channel attention mechanism to focus on",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 4,
+      "file": "Figure-4.png",
+      "page": 5,
+      "caption": "Figure 4. RMSe of 6 consecutive frames of distorted wavefront under different D/r0. At the sampling frequency of 500 Hz, compared with the non-predicted methods, our proposed prediction network shows obvious open-loop compensation advantages. As shown in Figure 5, we show the compensation results of our proposed method and non- predicted method for random consecutive 6 frames of true wavefront under the condition",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 5,
+      "file": "Figure-5.png",
+      "page": 6,
+      "caption": "Figure 5. Continuous 6 frames of true distorted wavefront, open-loop compensation wavefront and residual wavefront of non-predicted method and our proposed prediction method. (D/r0 = 26.32). For a quantitative and more intuitive representation, we show the average compensa- tion results for 100 sets of six frames consecutive true wavefront, as shown in Figure 6. In Figure 6a, it can be seen that with an increase in the number of delay frames, the prediction",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 6,
+      "file": "Figure-6.png",
+      "page": 6,
+      "caption": "Figure 6. Open-loop compensation results under different delay conditions. (D/r0 = 26.32). (a) RMSe comparison results of non-predicted method and our proposed method; (b) SSIM comparison results of non-predicted method and our proposed method. In test group (2), in order to further demonstrate the prediction accuracy and stability of our proposed method, we conducted four sets of comparison experiments under the",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 7,
+      "file": "Figure-7.png",
+      "page": 7,
+      "caption": "Figure 7. Prediction performance comparison of our proposed network with 500 Hz non-predicted, 1000 Hz non-predicted, spatial prediction and temporal prediction models (simulation data). (a) RMSe comparison of the ﬁve methods; (b) SSIM comparison of the ﬁve methods. When the sampling frequency is 500 Hz, the system delay is about 4–6 frames. There- fore, we quantitatively demonstrate the performance improvement of our proposed pre-",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 8,
+      "file": "Figure-8.png",
+      "page": 8,
+      "caption": "Figure 8.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 9,
+      "file": "Figure-9.png",
+      "page": 9,
+      "caption": "Figure 9. Prediction performance comparison of our proposed network with 500 Hz non-predicted, 1000 Hz non-predicted, spatial prediction and temporal prediction models (experimental data). (a) RMSe comparison of the ﬁve methods; (b) SSIM comparison of the ﬁve methods. Experimental test results show that under the different multi-frame delay conditions, the high frame frequency sampling method and the three prediction networks still have",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 10,
+      "file": "Figure-10.png",
+      "page": 10,
+      "caption": "Figure 10. Far-ﬁeld with open-loop compensation under 2-frame, 4-frame and 6-frame delay condi- tions. (a) The far-ﬁeld after open-loop compensation of our proposed, 500 Hz non-predicted method, 1000 Hz non-predicted method, spatial prediction and time prediction model under 2-frame (a1), 4-frame (a2) and 6-frame (a3) delay conditions. (b) Intensity distribution of the far-ﬁeld center hori- zontal line after open-loop compensation of our proposed, 500 Hz non-predicted method, 1000 Hz",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 1,
+      "file": "Table-1.png",
+      "page": 8,
+      "caption": "Table 1. Compared with 500 Hz non-predicted and 1000 Hz non-predicted methods, the compensa- tion accuracy increase percentage of the three prediction methods. Methods 4-Frame Delay 6-Frame Delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 2,
+      "file": "Table-2.png",
+      "page": 8,
+      "caption": "Table 2. Parameters related to 1 km laser atmospheric transmission system. Simulation Parameters Values Diameter 0.28 m",
+      "extraction": "page screenshot for review"
+    }
+  ],
+  "notes": [
+    "Figures/tables were saved as page-level screenshots for batch reliability.",
+    "paper.md is written as UTF-8 with BOM to avoid Windows mojibake."
+  ]
+}

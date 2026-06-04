@@ -1,0 +1,51 @@
+﻿{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2022_ScientificReports_single_step_phase_optimisation_CBC_deep_learning.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2022-Mills-single-step-phase-optimisation-CBC",
+  "pages": 13,
+  "items": [
+    {
+      "kind": "Figure",
+      "number": 1,
+      "file": "Figure-1.png",
+      "page": 3,
+      "caption": "Fig. 1. Process for creation of training data suitable for training a neural network to transform a focal intensity profile into the associated phase profile that shows the phase of each fibre. Showing a) schematic of application of beam propagation simulation for creating neural network training data, which produces a 256×256 intensity image and associated 256×256 phase image. Showing b) twelve examples of training data pairs.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 2,
+      "file": "Figure-2.png",
+      "page": 3,
+      "caption": "Fig 2. Application of a neural network for bespoke beam shaping for any phase that is unknown to the network. Starting from a current phase (which is unknown to the neural network), the associated simulated intensity is processed by the neural network and the phase is predicted. Subtracting the predicted phase profile from the (hidden) current phase profile produces a flat phase, with error depending on the prediction accuracy. At the same time, the phase profile for a desired intensity",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 3,
+      "file": "Figure-3.png",
+      "page": 3,
+      "caption": "figure 3, are examples of predicted phase profiles for different numbers of training data pairs. There is a clear improvement in predictive capability as the number of training pairs is increased. The effect of the amount of training data and degree of simulated noise on the neural network predictions are evaluated in more detail in figure 4, where predictions from 1500 test examples are presented. A key metric here is achieved using an arbitrarily chosen boundary, generally referred to",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 4,
+      "file": "Figure-4.png",
+      "page": 4,
+      "caption": "Fig. 4. Analysis of errors for 1500 randomly chosen test examples showing a) concept of power in the bucket, corresponding here to the percentage of intensity in the bucket for the corrected intensity profile divided by the percentage in the bucket for the flat phase case, b) the mean and standard deviation of power in the bucket for different numbers of training data pairs, c) distribution of test examples vs achieved power in the bucket for different amounts of training data and d) distributio",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 5,
+      "file": "Figure-5.png",
+      "page": 4,
+      "caption": "Fig. 5. Concept of using a forward and reverse neural network, in combination, for single step identification of whether an intensity profile is physically possible. In this case, the approach identifies whether a particular intensity profile is possible in this simulation. This method is possible as all simulated phases lead to simulated intensities, but not all simulated intensities lead to simulated phases. Due to the 6-fold rotational symmetry of the fibre array, a 30-degree rotation of",
+      "extraction": "page screenshot for review"
+    }
+  ],
+  "notes": [
+    "Figures/tables were saved as page-level screenshots for batch reliability.",
+    "paper.md is written as UTF-8 with BOM to avoid Windows mojibake."
+  ]
+}

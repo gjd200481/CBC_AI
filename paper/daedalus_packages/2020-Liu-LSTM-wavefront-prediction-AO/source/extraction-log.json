@@ -1,0 +1,131 @@
+﻿{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2020_arXiv_LSTM_wavefront_prediction_adaptive_optics.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2020-Liu-LSTM-wavefront-prediction-AO",
+  "pages": 10,
+  "items": [
+    {
+      "kind": "Table",
+      "number": 1,
+      "file": "Table-1.png",
+      "page": 3,
+      "caption": "Table 1. Principal parameters used with the Soapy SCAO sim- ulation for ANN training and optimisation. Module Parameter Value",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 1,
+      "file": "Figure-1.png",
+      "page": 3,
+      "caption": "Figure 1. Composition of the simulated SCAO system and its data ﬂow. RMS wavefront error of the predictive correction (upper) is expected to be between the delayed (center) and delay-compensated (lower) corrections. LSTM …… 0",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 2,
+      "file": "Figure-2.png",
+      "page": 3,
+      "caption": "Figure 2. The ANN predictor structure unrolled in time. The predictor can start predicting from the 2nd time step, although initial predictions can be unstable and inaccurate due to limited temporal information. The two LSTM cells have the same inner structure, but diﬀerent sets of parameters after training.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 2,
+      "file": "Table-2.png",
+      "page": 4,
+      "caption": "Table 2. Breakdown of computational load within the optimised ANN architecture. Module Input vector size Output vector size",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 3,
+      "file": "Figure-3.png",
+      "page": 5,
+      "caption": "Figure 3. Mean RMS WFEs in an AO loop averaged across 1,000 test sequences. The GS used to generate test slopes has a magnitude of 10, which is the same as that for training. The predictor is tested within the training regime, though this test set had not been observed by the predictor before. Wind speed is 15",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 4,
+      "file": "Figure-4.png",
+      "page": 5,
+      "caption": "Figure 4. Mean RMS WFEs in an AO loop averaged across 1,000 test sequences. The GS used to generate test slopes has a magni- tude of 6, which increases the SNR of inputs to the predictor that is trained with a GS of magnitude 10 (Mag-10) compared with during its training. Wind speed is 15 m/s in a single direction. We",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 3,
+      "file": "Table-3.png",
+      "page": 5,
+      "caption": "Table 3. Training conditions and structures of the three ANN predictors. ANN Predictor Mag-10 Mag-8",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 5,
+      "file": "Figure-5.png",
+      "page": 5,
+      "caption": "Figure 5. RMS slope error (mas) per subaperture compared with zero-delay measurements by SH-WFS as the WFS SNR varies. This quantity is the root of the ANN training metric. All predictors have lower errors around the corresponding training regimes. Noise-free",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 6,
+      "file": "Figure-6.png",
+      "page": 6,
+      "caption": "Figure 6. RMS slope error (mas) per subaperture with refer- ence to measurements by the idealised WFS, which removes noise, aliasing and centroiding errors in the measurement of the ﬁrst 36 Zernike orders compared with zero-delay measurements by SH- WFS. This along with Figs. 4 and 5 demonstrates the ﬁltering of",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 7,
+      "file": "Figure-7.png",
+      "page": 7,
+      "caption": "Figure 7. Robustness of the predictor against wind speed ﬂuctu- ations between 10 and 15 m/s every 10 frames. Wind direction is 0 degree. Guide star magnitude is 6. 0 15",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 8,
+      "file": "Figure-8.png",
+      "page": 7,
+      "caption": "Figure 8. Robustness of the predictor against wind direction ﬂuc- tuations between 0 and 45 degrees every 10 frames. Wind speed is 15 m/s. Guide star magnitude is 6. 2 10",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 9,
+      "file": "Figure-9.png",
+      "page": 7,
+      "caption": "Figure 9. ANN performance with multiple turbulence layers mov- ing along diﬀerent directions. Wind speeds of either the 1- or 4- layer proﬁle are scaled to maintain the same dynamics as that of the 35-layer proﬁle. r0 is 0.157 m. 2",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 10,
+      "file": "Figure-10.png",
+      "page": 7,
+      "caption": "Figure 10. ANN performance with multiple turbulence layers moving along the same direction. Compared with Fig. 9, the ANN performance suﬀers from the increased number of wind vectors, but mainly from the variety among those vectors. 5",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 11,
+      "file": "Figure-11.png",
+      "page": 7,
+      "caption": "Figure 11. In a simulated system with a two-frame latency, the methodology adopted for the single-latency prediction is extended to training a separate ANN predictor (single-step prediction). In this case, the single-latency predictor can also be used twice (two- step prediction), albeit with worse performance. Both predictors",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 4,
+      "file": "Table-4.png",
+      "page": 7,
+      "caption": "Table 4.4. The delayed and the delay-compensated correc- tion loops behave similarly regardless of the number of lay- ers, thus only values obtained from the single-layer proﬁle are shown here. Mean RMS WFEs of the delayed, 35-layer",
+      "extraction": "page screenshot for review"
+    }
+  ],
+  "notes": [
+    "Figures/tables were saved as page-level screenshots for batch reliability.",
+    "paper.md is written as UTF-8 with BOM to avoid Windows mojibake."
+  ]
+}

@@ -1,0 +1,2 @@
+"""Shared optical simulation utilities."""
+

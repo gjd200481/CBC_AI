@@ -1,0 +1,607 @@
+﻿Citation: Wang, N.; Zhu, L.; Yuan, Q.;
+Ge, X.; Gao, Z.; Wang, S.; Yang, P.
+Highly Stable Spatio-Temporal
+Prediction Network of Wavefront
+Sensor Slopes in Adaptive Optics.
+Sensors 2023, 23, 9260. https://
+doi.org/10.3390/s23229260
+Academic Editor: Jesper Skottfelt
+Received: 18 September 2023
+Revised: 9 November 2023
+Accepted: 9 November 2023
+Published: 18 November 2023
+Copyright:
+© 2023 by the authors.
+Licensee MDPI, Basel, Switzerland.
+This article is an open access article
+distributed
+under
+the
+terms
+and
+conditions of the Creative Commons
+Attribution (CC BY) license (https://
+creativecommons.org/licenses/by/
+4.0/).
+sensors
+Article
+Highly Stable Spatio-Temporal Prediction Network of
+Wavefront Sensor Slopes in Adaptive Optics
+Ning Wang 1,2,3,4, Licheng Zhu 1,2,3,*, Qiang Yuan 5, Xinlan Ge 1,2,3,4, Zeyu Gao 1,2,3
+, Shuai Wang 1,2,3
+and Ping Yang 1,2,3,*
+1
+National Key Laboratory of Optical Field Manipulation Science and Technology, Chinese Academy of
+Sciences, Chengdu 610209, China; w_ning@163.com (N.W.); xinlan_ge@163.com (X.G.);
+gaozeyu1994@hotmail.com (Z.G.); wangshuai@ioe.ac.cn (S.W.)
+2
+Key Laboratory on Adaptive Optics, Institute of Optics and Electronics, Chinese Academy of Sciences,
+Chengdu 610209, China
+3
+Institute of Optics and Electronics, Chinese Academy of Sciences, Chengdu 610209, China
+4
+School of Electronic, Electrical and Communication Engineering, University of Chinese Academy of Sciences,
+Beijing 100049, China
+5
+Facility Design and Instrumentation Institute, China Aerodynamics Research and Development Center,
+Mianyang 621000, China; yqcardc@163.com
+*
+Correspondence: zlcheng911@163.com (L.Z.); pingyang2516@163.com (P.Y.)
+Abstract: Adaptive Optics (AO) technology is an effective means to compensate for wavefront
+distortion, but its inherent delay error will cause the compensation wavefront on the deformable
+mirror (DM) to lag behind the changes in the distorted wavefront. Especially when the change in
+the wavefront is higher than the Shack–Hartmann wavefront sensor (SHWS) sampling frequency,
+the multi-frame delay will seriously limit its correction performance. In this paper, a highly stable
+AO prediction network based on deep learning is proposed, which only uses 10 frames of prior
+wavefront information to obtain high-stability and high-precision open-loop predicted slopes for the
+next six frames. The simulation results under various distortion intensities show that the prediction
+accuracy of six frames decreases by no more than 15%, and the experimental results also verify that
+the open-loop correction accuracy of our proposed method under the sampling frequency of 500 Hz
+is better than that of the traditional non-predicted method under 1000 Hz.
+Keywords: adaptive optics; wavefront prediction; deep learning; laser atmospheric transmission
+1. Introduction
+AO technology is an effective means to compensate dynamic wavefront distortion.
+However, the actual AO system is limited by the read-out data delay of the SHWS and
+the control calculation delay, it usually has a correction delay of at least 2–3 sampling
+cycles [1–3]. As a result, SHWS usually needs to greatly increase the sampling frequency to
+cope with the high time-frequency wavefront distortion. This has a very high requirement
+for hardware processing speed, which greatly increases the system cost. At the same
+time, high frame frequency sampling will inevitably shorten the exposure time, which
+has adverse effects on the detection of dim targets. However, if the sampling frequency
+decreases, the compensated wavefront on DM will lag behind the actual wavefront, and the
+multi-frame delay error will seriously affect the correction performance of AO system [4,5].
+Therefore, it is of great research signiﬁcance and application value to obtain multi-frame
+correction results with higher accuracy and stronger stability under the condition that
+the SHWS sampling frequency is lower than the time variation frequency of atmospheric
+turbulence (fSHWS < fATurb).
+Forward prediction correction technology can effectively alleviate the problem of
+multi-frame delay by predicting the future wavefront correction information, such as the
+Sensors 2023, 23, 9260. https://doi.org/10.3390/s23229260
+https://www.mdpi.com/journal/sensors
+
+
+Sensors 2023, 23, 9260
+2 of 12
+more classical recursive least squares (RLS) control algorithm [6–9] and Kalman ﬁlter-
+based linear quadratic Gaussian (LQG) control algorithm [10–15]. Especially in recent
+years, neural network (NN) methods have shown unique advantages in AO prediction
+correction due to their strong nonlinear ﬁtting ability, anti-interference robustness and
+generalization ability [16,17]. The relevant research on the single-frame output prediction
+model focuses on the improvement of prediction accuracy [18–24], and does not fully
+consider the problem of the number of speciﬁc multiple delay frames in the actual AO
+system. When dealing with the distortion of time frequency higher than the SHWS sampling
+frequency, the multi-frame delay in the AO system cannot be effectively compensated.
+And so, Swanson et al., 2018 [25] demonstrated their ability to predict up to ﬁve future
+wavefronts with 1 nm RMS wavefront error by using long short-term memory (LSTM)
+networks. Chen et al., 2021 [22] used a classical U-Net convolutional NN architecture to
+predict the future eight frames under 32 prior wavefronts of the input history.
+However, the above multi-frame prediction methods show that with an increase in
+the number of predicted frames, the residual wavefront root mean square (RMS) value
+synchronously increases, the prediction accuracy decreases rapidly, and then the correction
+performance of the multi-frame delay system is signiﬁcantly reduced. Based on the above
+description, we propose a spatio-temporal prediction network based on deep learning to
+obtain a high-stability and high-precision multi-frame prediction output. In our proposed
+spatio-temporal prediction network, we mainly include an attention mechanism and a
+residual learning and convolutional LSTM (ConvLSTM) module. The attention mechanism
+and residual learning module are used to extract the spatial features of the multi-frame
+prior input wavefront. The ConvLSTM network is used to gradually update the wavefront
+input to focus on the temporal features, and the ﬁnal multi-frame prediction results are
+obtained. We show that at the condition of fSHWS < fATurb, our proposed network can obtain
+high-stability and high-precision open-loop wavefront slope of six frames in the future
+by using only 10 frames prior information, and verify the effectiveness and stability of
+our proposed network by using the experimental open-loop data collected by a 1 km laser
+atmospheric transmission system.
+2. Methodology
+In conventional non-predicted AO systems, DM compensates for current wavefront
+distortion directly by loading historical wavefront information [3]. In order to improve the
+real-time correction capability, we adopt a deep learning-based method for multi-frame
+wavefront prediction to adapt to different delay errors at the condition of fSHWS < fATurb.
+The schematic diagram of an AO open-loop prediction correction system based on the
+distorted wavefront of atmospheric turbulence is shown in Figure 1. The AO system
+ﬁrst uses SHWS to detect the wavefront aberration of atmospheric turbulence. Then,
+the NN prediction model predicts the wavefront aberration of the future time by taking
+the historical wavefront slope data as input, and the controller converts the predicted
+slope into the DM control voltage. Assuming that the time delay calculated by SHWS
+wavefront detection, NN prediction and wavefront controller processing is td, tp and tc,
+respectively, then the total time error from the detection of wavefront aberration to the
+completion of phase correction are the sum of the three. If the NN can predict sufﬁcient and
+accurate future slopes, then the corrected wavefront loaded on the DM is the true distorted
+wavefront currently detected, and real-time compensation can be completed.
+2.1. Atmospheric Turbulence Data Set Generation
+The atmospheric frozen ﬂow hypothesis is a widely used modeling method for at-
+mospheric turbulence [26–29]. In the simulation, we simulated a 1 km near-surface near-
+horizontal laser atmospheric transmission observation system based on Kolmogorov tur-
+bulence statistical theory [30], with a transmitting/receiving height of about 10 m. Five
+sets of atmospheric turbulence training dataset with different turbulence intensity were
+simulated according to the HV-57 refractive index structure constant model to improve
+
+
+Sensors 2023, 23, 9260
+3 of 12
+the generalization ability of the network. The experimental measurements show that the
+variation in refractive index structure constant (C2
+n) at the same height in the four seasons
+in the region where our experimental system is located is generally about an order of
+magnitude. Therefore, ﬁve values within an order of magnitude of C2
+n calculated under sim-
+ulation conditions were considered in the simulation to simulate ﬁve different atmospheric
+turbulence intensity, in which C2
+n and wind speed of each set of data were calculated by the
+relationship between atmospheric coherence length r0 and C2
+n, and the Buffton wind speed
+model [24]. The phase screen of atmospheric turbulence is generated by Fourier series
+method through time evolution, and each phase screen contains a turbulence structure of
+5 layers.
+ 
+Figure 1. Schematic diagram of AO open-loop prediction correction system based on the distorted
+wavefront of atmospheric turbulence.
+The sampling frequency is set to 1000 Hz to facilitate comparison of subsequent high
+frame frequency sampling open-loop correction. During training, frame extraction is
+used to perform prediction under the condition of 500 Hz sampling frequency, then in
+an AO system with a delay of 2–3 sampling cycles, the delay frame number may be as
+high as 4–6 frames. Under the condition of the strongest simulated turbulence intensity,
+we conducted a comparative test of the average RMSe of 200 test sets data by inputting
+6–12 frames. We found that the prediction performance remained basically unchanged
+when the input exceeded 10 frames and beyond. Considering the problem that more
+wavefront input would increase the calculation and time consumption, we predict the
+uncorrected slope of the next 6 frames based on the historical 10 frames wavefront slope
+sequence of SHWS detection under the open-loop conditions. The telescope aperture is set
+to 1 m, the spatial sampling number is 256 × 256 pixels, the wavelength is 1064 nm, the
+lens let array of SHWS is 16 × 16, the sampling frequency is 500 Hz, and the wind direction
+is randomly 0–360◦.
+Different D/r0 represent different turbulence intensities. We chose 10,000 sets of
+slope datasets for each of the ﬁve different D/r0 to train our model, so as to improve
+the generalization ability of the network. The dataset is divided into training and testing
+dataset in a 4:1 ratio. Speciﬁcally in this paper, for the images in the dataset, the ﬁrst
+10 frames are taken as the input, and frames 11–16 are taken as the label of the network to
+form a training pair. In the atmospheric simulation, we simulated the wavefront phase, but
+in the network model training, we selected the wavefront slope data, which is more easily
+obtained in the actual AO system and has a smaller dimension; that is, the input for each
+time is the centroid displacement in the x and y directions of the SHWS subaperture array,
+the input dimension is 16 × 16 × 2 × 10, and the output dimension is 16 × 16 × 2 × 6. The
+input/output settings are shown in Figure 2, in which recovery wavefronts are used as true
+wavefront for subsequent predictive performance tests.
+
+
+Sensors 2023, 23, 9260
+4 of 12
+ 
+Figure 2. Schematic diagram of input and output settings for network model training.
+2.2. Network Model Settings
+In this paper, we proposed a spatio-temporal prediction network based on deep
+learning, and the network structure diagram is shown in Figure 3. The network ﬁrst uses
+the spatial attention mechanism to pay attention to similar target features in each frame of
+distorted wavefront, and assigns different weights to each element in each frame. As shown
+in the ﬁgure, f i
+s is the weighted characteristic wavefront, which well summarizes the similar
+target features in the continuous distorted wavefront. However, with the deepening of the
+number of network layers, the problem of gradient disappearance of the objective function
+may occur, which means the network parameters of the principle output layer cannot be
+effectively learned. The residual learning network can effectively alleviate it, improve the
+depth of the training network, and reﬁne similar features between two consecutive frames
+and eliminate redundant information to obtain higher prediction accuracy, which has been
+veriﬁed in previous work [24]. Therefore, we use residual learning strategy to reﬁne similar
+features for structural feature extraction.
+ 
+Figure 3. Our proposed spatio-temporal prediction network. (a) The overall architecture we propose;
+(b) the detailed structure we propose; (c) the ConvLSTM stepwise output mode.
+In addition, although the distorted wavefront of each frame input contains target fea-
+tures, these features contribute differently to the obtained ﬁnal prediction results. Similarly
+to the spatial attention mechanism, we use the channel attention mechanism to focus on
+those distorted wavefront that contain more target features, rather than treating the features
+from each frame equally. Finally, in order to make the multi-frame output have better
+
+
+Sensors 2023, 23, 9260
+5 of 12
+stability, the extracted features are successively passed through the ConvLSTM network
+with time series features [31] to obtain the ﬁnal prediction results. The training process of
+this paper is different from the traditional training methods; that is, the input prior does
+not necessarily come from all the true wavefront. It is a gradually updated process; that is,
+the speciﬁc training process is frame 1–10 to output frame 11, the second round of input
+is 2–10 combined with the last predicted frame 11 to output frame 12, the third round of
+input is 3–10 combined with frames 11 and 12 to output frame 13. . . and so on, as shown in
+Figure 3c.
+In our proposed model, the L1_Loss function is used to minimize the sum of all abso-
+lute value errors between the true value and the predicted value. As shown in Equation (1):
+L1_lossk =
+∑n
+i=1
+y(i)k_predict −y(i)k_true
+
+n
+k = (1, 2, 3...6)
+(1)
+where n is all the elements. y(i)k_predict is the predicted value of the distorted wavefront of
+the k-frame, and y(i)k_true is the true value. The total function of this model is:
+Loss = ∑10
+k=1 L1_Lossk
+6
+(2)
+3. Results and Discussion
+3.1. Simulation Data Analysis
+After selecting the optimal model, we verify the accuracy and stability of our proposed
+model through the following two sets of test methods. All of the following prediction
+network datasets are sampled at a frequency of 500 Hz. In order to compare our proposed
+method with open-loop compensation under non-predicted conditions with high frame
+frequency sampling, we add a set of 1000 Hz to the non-predicted method. The non-
+predicted methods of 500 Hz and 1000 Hz speciﬁcally refer to the direct use of historical
+wavefront phase to compensate the current wavefront phase at their respective sampling
+frequencies. For example, in a two-frame delay system, the wavefront at the k-2 moment is
+used to compensate for the distorted wavefront at the k moment. In a three-frame delay
+system, the wavefront at the k-3 moment is used to compensate, and so on. The spatial
+prediction network model refers to the combination of classical CNN and spatial attention
+mechanism. The time prediction model refers to the classical ConvLSTM network. The
+training sets of the above two prediction networks are completely consistent with the
+training dataset of our proposed model. For all of the tests below, our results are based on
+averages of 200 test sets in order to achieve more realistic and accurate predicted results.
+We used two parameters to evaluate the accuracy of the prediction methods:
+i.
+RMSe: Residual wavefront RMS;
+ii.
+SSIM: Structural similarity index.
+(1) The generalization ability is tested by using the distorted wavefront data sets of
+different D/r0, namely different atmospheric turbulence intensities, which have never been
+trained by the network.
+(2) Under the atmospheric turbulence condition of D/r0 = 26.32, the performance
+of our proposed method, the time/spatial prediction network, the 500 Hz non-predicted
+method, and the 1000 Hz non-predicted method is compared and analyzed using the same
+test dataset.
+In test group (1), although the atmospheric turbulence distorted wavefront data of the
+test dataset is not part of the training dataset, has never been recognized by the network,
+and is separated from the training dataset distribution by 2000 frames, the parameters
+such as wind vectors in each test dataset are consistent with the training dataset at the
+same atmospheric turbulence intensity. Therefore, in this case, the predictor is expected
+to achieve its best performance. As shown in Figure 4, under the same delay condition,
+with an increase in D/r0, the RMSe of the six consecutive frames of distorted wavefront
+
+
+Sensors 2023, 23, 9260
+6 of 12
+increases gradually. As the number of delayed frames increases, the larger the D/r0 is, the
+more unstable the predicted performance.
+Figure 4. RMSe of 6 consecutive frames of distorted wavefront under different D/r0.
+At the sampling frequency of 500 Hz, compared with the non-predicted methods, our
+proposed prediction network shows obvious open-loop compensation advantages. As
+shown in Figure 5, we show the compensation results of our proposed method and non-
+predicted method for random consecutive 6 frames of true wavefront under the condition
+of 1–6 frame delay, respectively.
+Figure 5. Continuous 6 frames of true distorted wavefront, open-loop compensation wavefront and
+residual wavefront of non-predicted method and our proposed prediction method. (D/r0 = 26.32).
+For a quantitative and more intuitive representation, we show the average compensa-
+tion results for 100 sets of six frames consecutive true wavefront, as shown in Figure 6. In
+Figure 6a, it can be seen that with an increase in the number of delay frames, the prediction
+accuracy of our proposed method gradually decreases, but compared with non-predicted
+methods, it still shows higher prediction stability. When the number of delayed frames is
+2, the prediction accuracy is improved by 50.2% compared to the non-predicted method;
+when the number of delayed frames is 4, the prediction accuracy is improved by 70.3%;
+and when the number of delayed frames is 6, the prediction accuracy is improved by
+77%. It is proved that our proposed prediction network is effective in the actual AO delay
+
+
+Sensors 2023, 23, 9260
+7 of 12
+system, and the system with more delay frames has greater performance improvement.
+In Figure 6b, it can be seen that as the number of delayed frames increases, the SSIM
+value of non-predicted methods decreases rapidly, while the SSIM of our proposed method
+remains stable above 0.9, which further veriﬁes the prediction accuracy and stability of our
+proposed method.
+ 
+Figure 6. Open-loop compensation results under different delay conditions. (D/r0 = 26.32). (a) RMSe
+comparison results of non-predicted method and our proposed method; (b) SSIM comparison results
+of non-predicted method and our proposed method.
+In test group (2), in order to further demonstrate the prediction accuracy and stability
+of our proposed method, we conducted four sets of comparison experiments under the
+turbulence intensity of D/r0 = 26.32. Figure 7 shows that under different multi-frame delay
+conditions, the high frame frequency sampling method (1000 Hz non-predicted) and the
+three prediction networks all have smaller RMSe and higher SSIM compared with the
+500 Hz non-predicted method. Under the 2–6 frame delay condition, our proposed method
+all show the best prediction performance, but when the delay frame number is 1 frame, the
+1000 Hz non-predicted method performs better. But at this time, the sampling frequency is
+consistent with the change frequency of distorted wavefront, and the system delay is at
+least 2–3 frames, so this advantage is not prominent. In addition, it can be seen that it is
+difﬁcult to ensure the stability of continuous multi-frame prediction accuracy, whether it is
+high frame frequency sampling or only considering the correlation of wavefront distortion
+in time or space.
+Figure 7. Prediction performance comparison of our proposed network with 500 Hz non-predicted,
+1000 Hz non-predicted, spatial prediction and temporal prediction models (simulation data).
+(a) RMSe comparison of the ﬁve methods; (b) SSIM comparison of the ﬁve methods.
+When the sampling frequency is 500 Hz, the system delay is about 4–6 frames. There-
+fore, we quantitatively demonstrate the performance improvement of our proposed pre-
+
+
+Sensors 2023, 23, 9260
+8 of 12
+diction method, spatial prediction network and time prediction network compared with
+500 Hz non-predicted method and 1000 Hz non-predicted method, respectively, under the
+delay conditions of four-frame and six-frame. As shown in Table 1, it can be seen that our
+proposed method has more obvious compensation advantages. Moreover, the prediction
+accuracy based on RMSe of the proposed for the next six frames of wavefront decreases by
+no more than 15%, which shows a high prediction stability.
+Table 1. Compared with 500 Hz non-predicted and 1000 Hz non-predicted methods, the compensa-
+tion accuracy increase percentage of the three prediction methods.
+Methods
+4-Frame Delay
+6-Frame Delay
+500 Hz Non-predicted
+Our proposed
+70.0%
+76.8%
+Spatial Prediction Net
+54.3%
+62.0%
+Time Prediction Net
+46.0%
+53.1%
+1000 Hz Non-predicted
+Our proposed
+47.1%
+59.3%
+Spatial Prediction Net
+18.8%
+32.6%
+Time Prediction Net
+5.2%
+17.5%
+In our proposed prediction model, the attention mechanism module and the residual
+learning module focus on ﬁnely extracting the spatial structure between the continuous
+wavefront. ConvLSTM focuses on the temporal correlation, and the output result of each
+time is used as the input for the next time. Although this training method of gradual output
+will bring a certain error accumulation, and the prediction accuracy will gradually decrease
+as the time goes on, but the output result of each frame comes from 10 consecutive frames
+of a priori including the most recent one, so the more accurate the prediction outputs of
+the previous frames are, the more accurate the later ones will be, which largely ensures the
+high stability of the output.
+3.2. Experimental Data Veriﬁcation
+The performance of our proposed method is also veriﬁed in the experimental data, we
+tested one-time open-loop data collected from an actual 1 km laser atmospheric transmis-
+sion system. The laser light source in the system is a purely cooperative target, as shown in
+Figure 8.
+ 
+Figure 8. Schematic diagram of a 1 km laser atmospheric transmission system. (a) The perspective of
+the receiving end (AO system). (b) The perspective of the transmitting end (target pure cooperative
+target light source).
+We collected a set of SHWS data with D/r0 = 18.7, a sampling frequency of 1000 Hz,
+and an acquisition time of 10 s. Table 2 shows the parameters of the cooperative target and
+SHWS in the experiment, as well as some parameters for estimating atmospheric conditions.
+
+
+Sensors 2023, 23, 9260
+9 of 12
+Table 2. Parameters related to 1 km laser atmospheric transmission system.
+Simulation Parameters
+Values
+Diameter
+0.28 m
+SHWS lens let array
+16 × 16
+CCD
+256 × 256 pixels
+Wavelength
+1064 nm
+r0
+1.49 cm
+Wind Speeds
+3.0–5.5 m/s
+Wind Directions
+R [0–360◦]
+Transmit/Receive Altitude
+10 m
+Transmission Distance
+1 km
+The result display of experimental data is based on the model after ﬁne-tuning the
+simulation model; in other words, the experimental data is extracted at a sampling frame
+frequency of 500 Hz and then trained again on the basis of this model. This is because
+there is a large degree of difference between the simulated data and the experimental
+data in essence. The simulated data is a frozen and discrete noise-free model, while the
+experimental data has more uncertain errors, such as non-stationary characteristics of wind
+speeds and wind directions. However, the ﬁne-tuning training is very fast, because our
+proposed model has learned the law of feature extraction and successfully identiﬁed the
+frozen ﬂow part of the experimental data. In the ﬁne-tuning process, we directly use the
+collected SHWS slope data as the training set data, and we reserve 500 frames of data as the
+test dataset and do not participate in the training process, so the test dataset has not been
+trained in advance. When analyzing the prediction performance, we carried out 65-order
+Zernike mode wavefront restoration processing on the SHWS label and the prediction
+data. Since tilt aberration had been removed in the obtained experimental data, which was
+only aimed at the wavefront signal driving the deformation of the DM. Figure 9 shows the
+prediction performance of our proposed method with non-predicted, spatial prediction
+and time prediction network.
+Figure 9. Prediction performance comparison of our proposed network with 500 Hz non-predicted,
+1000 Hz non-predicted, spatial prediction and temporal prediction models (experimental data).
+(a) RMSe comparison of the ﬁve methods; (b) SSIM comparison of the ﬁve methods.
+Experimental test results show that under the different multi-frame delay conditions,
+the high frame frequency sampling method and the three prediction networks still have
+smaller RMSe and higher SSIM compared with the 500 Hz non-prediction method. The
+difference between the simulation results is that the high frame frequency sampling method
+is superior to the space/time prediction model. However, our proposed method still
+maintains a relatively high stability output. This is because the spatial and temporal
+similarity between the actual adjacent wavefront is smaller than the simulation data due to
+the inﬂuence of changing wind speed, for instance, which once again proves that a single
+capture time/space correlation is difﬁcult to better satisfy the distortion compensation
+
+
+Sensors 2023, 23, 9260
+10 of 12
+under real conditions. Similarly, for example, under the delay conditions of four-frame
+and six-frame, respectively, the average RMSe of our proposed model is 0.142λ and 0.185λ,
+respectively, compared with the 500 Hz non-predicted method, the compensation accuracy
+is improved by 64.7% and 67.0%, respectively. Compared with 1000 Hz non-predictive
+method, it is improved by 38.0% and 42.2%. However, in the case of our proposed method,
+this stability decreases compared to the simulation dataset test results. We attribute this
+performance degradation to more constantly changing factors in the real environment, such
+as ambient light intensity, wind speed, humidity, etc. More in-depth exploration will be
+carried out in our follow-up work.
+Furthermore, we recorded the far-ﬁeld of the true distorted wavefront to be corrected
+under the conditions of two-frame, four-frame and six-frame delay by using our proposed
+method, 500 Hz non-predicted method, 1000 Hz non-predicted method, spatial predic-
+tion and time prediction network. As can be seen from Figure 10a,b, regardless of the
+delay condition, the energy of our proposed method is more concentrated after open-loop
+compensation. From which it can be found that under the delay conditions of two-frame,
+four-frame and six-frame, the maximum intensity of the far-ﬁeld focus of our proposed
+is about 6.2 times, 13.8 times and 14.1 times of the 500 Hz non-predicted method, and
+1.2 times, 2.7 times and 6.9 times of the 1000 Hz non-predicted method after open-loop cor-
+rection, respectively. It is quantitatively proved that our proposed prediction method can
+obtain better open-loop correction results under the condition of low sampling frequency
+than the traditional non-predicted method with high frame frequency sampling.
+Figure 10. Far-ﬁeld with open-loop compensation under 2-frame, 4-frame and 6-frame delay condi-
+tions. (a) The far-ﬁeld after open-loop compensation of our proposed, 500 Hz non-predicted method,
+1000 Hz non-predicted method, spatial prediction and time prediction model under 2-frame (a1),
+4-frame (a2) and 6-frame (a3) delay conditions. (b) Intensity distribution of the far-ﬁeld center hori-
+zontal line after open-loop compensation of our proposed, 500 Hz non-predicted method, 1000 Hz
+non-predicted method, spatial prediction and time prediction model under 2-frame (b1), 4-frame
+(b2) and 6-frame (b3) delay conditions.
+4. Conclusions
+In this paper, a multi-frame wavefront prediction network is proposed, which takes
+into account the spatio-temporal coupling characteristics of the atmosphere. The network
+uses an attention mechanism and residual learning module to extract spatial features, and
+
+
+Sensors 2023, 23, 9260
+11 of 12
+a ConvLSTM network to focus on the time series features by gradually updating the input
+training mode, and obtains the ﬁnal multi-frame prediction results with high precision and
+high stability. At the same time, the model can predict the future multi-frame wavefront
+with relatively less prior wavefront input. The simulation results under various distortion
+intensities show that the prediction accuracy of six frames decreases by no more than
+15%. The experimental results also conﬁrm that under the condition of a sampling frame
+frequency of 500 Hz and a delay of six frames, the maximum intensity of far-ﬁeld focus
+after open-loop correction is about 6.9 times that of 1000 Hz traditional non-predicted
+method. In summary, the results show that when the sampling frequency of SHWS is lower
+than the frequency of wavefront aberration change, our proposed prediction method can
+achieve better correction effect than the traditional non-predicted method in the low frame
+frequency sampling AO system, and can ensure sufﬁcient exposure time.
+Author Contributions: Conceptualization, N.W. and L.Z.; methodology, N.W. and L.Z.; software,
+N.W. and L.Z.; validation, N.W., Q.Y., X.G. and L.Z.; formal analysis, N.W. and L.Z.; investigation,
+N.W., L.Z., Q.Y. and X.G.; resources, L.Z., N.W. and Z.G.; data curation, N.W., Q.Y., X.G. and L.Z.;
+writing—original draft preparation, N.W.; writing—review and editing, N.W., L.Z., S.W. and P.Y.;
+visualization, N.W.; supervision, L.Z.; project administration, S.W. and P.Y.; funding acquisition, L.Z.,
+Z.G., S.W. and P.Y. All authors have read and agreed to the published version of the manuscript.
+Funding: This research was funded by National Natural Science Foundation of China, grant number
+62005285, 62105336 and Sichuan Province Science and Technology Support Program, grant number
+2022JDRC0095.
+Institutional Review Board Statement: Not applicable.
+Informed Consent Statement: Not applicable.
+Data Availability Statement: The data presented in this study are available on request from the
+corresponding author. The data are not publicly available for privacy reasons.
+Conﬂicts of Interest: The authors declare no conﬂict of interest.
+References
+1.
+Fried, D.L. Time-delay-induced mean-square error in adaptive optics. JOSA A 1990, 7, 1224–1225. [CrossRef]
+2.
+Sivo, G.; Kulcsár, C.; Conan, J.M. First on-sky SCAO validation of full LQG control with vibration mitigation on the CANARY
+pathﬁnder. Opt. Express 2014, 22, 23565–23591. [CrossRef]
+3.
+Kulcsár, C.; Raynaud, H.F.; Petit, C.; Conan, J.M. Minimum variance prediction and control for adaptive optics. Automatica 2012,
+48, 1939–1954. [CrossRef]
+4.
+Li, X. Effective bandwidth analysis of adaptive optics control system. Acta Opt. Sin. 1997, 17, 1697–1702.
+5.
+Li, X. Analysis of the residual servo variance for an adaptive optics system. Acta Opt. Sin. 2000, 20, 1328–1334.
+6.
+Page, K.A.; Schöck, M. Analysis of atmospheric turbulence with applications to linear predictions. Eur. South. Obs. Conf. Workshop
+Proc. 2002, 58, 367–372.
+7.
+Yan, Z.; Li, X.; Rao, C. Numerical simulation of a prediction control algorithm for close-loop adaptive optical system. Acta Opt.
+2011, 31, 0101003.
+8.
+Beghi, A.; Cenedese, A.; Masiero, A. Atmospheric turbulence prediction: A PCA approach. In Proceedings of the 46th IEEE
+Conference on Decision and Control, New Orleans, LA, USA, 12–14 December 2007; pp. 566–571.
+9.
+Fraanje, R.; Doelman, N. Modeling and prediction of turbulence induced wavefront distortions. In Proceedings of the SPIE
+Astronomical Telescopes + Instrumentation, San Diego, CA, USA, 27 June–2 July 2010; Volume 7736, pp. 459–468.
+10.
+Correia, C.; Raynaud, H.F.; Kulcsár, C.; Conan, J.M. On the optimal reconstruction and control of adaptive optical systems with
+mirror dynamics. J. Opt. Soc. Am. A 2010, 27, 333. [CrossRef]
+11.
+Wiberg, D.M.; Max, C.E.; Gavel, D.T. A spatial non-dynamic LQG controller: Part I, Application to adaptive optics. In Proceedings
+of the 2004 43rd IEEE Conference on Decision and Control (CDC) (IEEE Cat. No. 04CH37601), Nassau, Bahamas, 14–17 December
+2004; pp. 3326–3332.
+12.
+Wiberg, D.M.; Max, C.E.; Gavel, D.T. A spatial non-dynamic LQG controller: Part II, theory. In Proceedings of the 2004 43rd IEEE
+Conference on Decision and Control (CDC) (IEEE Cat. No. 04CH37601), Nassau, Bahamas, 14–17 December 2004; pp. 3333–3338.
+13.
+Looze, D.P. Linear-quadratic-Gaussian control for adaptive optics systems using a hybrid model. JOSA A 2009, 26, 1–9. [CrossRef]
+14.
+Petit, C.; Quiros-Pacheco, F.; Conan, J.M.; Kulcsar, C.; Raynaud, H.F.; Fusco, T.; Rousset, G. Kalman-ﬁlter-based control for
+adaptive optics. In Advancements in Adaptive Optics; SPIE Digital Library: Washington, DC, USA, 2004; pp. 1414–1425.
+
+
+Sensors 2023, 23, 9260
+12 of 12
+15.
+Gray, M.; Petit, C.; Rodionov, S.; Bocquet, M.; Bertino, L.; Ferrari, M.; Fusco, T. Local ensemble transform Kalman ﬁlter, a fast
+non-stationary control law for adaptive optics on ELTs: Theoretical aspects and ﬁrst simulation results. Opt. Express 2014, 22,
+20894–20913. [CrossRef]
+16.
+Wong, A.P.; Norris, B.R.; Tuthill, P.G.; Scalzo, R.; Lozi, J.; Vievard, S.; Guyon, O. Predictive control for adaptive optics using neural
+networks. J. Astron. Telesc. Instrum. Syst. 2021, 7, 019001. [CrossRef]
+17.
+Cheng, T.; Guo, S.; Wang, N.; Zhao, M.; Wang, S.; Yang, P. Research Progress of Laser Adaptive Optics Based on Machine Learning.
+Chin. J. Lasers 2023, 50, 1101008.
+18.
+Yan, Z.; Li, X. Neural network prediction algorithm for control voltage of deformable mirror in adaptive optical system. Acta Opt.
+Sin. 2010, 30, 911–916.
+19.
+Shi, X.; Feng, Y.; Chen, Y.; Tian, Z.; Li, X. Predicting control voltages of deformable mirror in adaptive optical system. High Power
+Laser Part. Beams 2012, 24, 1281–1286.
+20.
+Zheng, Z.; Li, C.; Li, B.; Zhang, S. Analysis and demonstration of PID algorithm based on arranging the transient process for
+adaptive optics. Chin. Opt. Lett. 2013, 11, 110101. [CrossRef]
+21.
+Liu, X.; Morris, T.; Saunter, C.; de Cos Juez, F.J.; González-Gutiérrez, C.; Bardou, L. Wavefront prediction using artiﬁcial neural
+networks for open loop adaptive optics. Mon. Not. R. Astron. Soc. 2020, 496, 456–464. [CrossRef]
+22.
+Chen, J.G.; Shah, V.; Liu, L. Performance of a U-Net-based neural network for predictive adaptive optics. Opt. Letters 2021, 46,
+2513–2516. [CrossRef]
+23.
+Wang, N.; Zhu, L.; Ma, S.; Zhao, W.; Ge, X.; Gao, Z.; Wang, S.; Yang, P. Deep Learning-Based Prediction Algorithm on Atmospheric
+Turbulence Induced Wavefront for Adaptive Optics. IEEE Photonics J. 2022, 14, 1–10. [CrossRef]
+24.
+Wu, J.; Tang, J.; Zhang, M.; Di, J.; Hu, L.; Wu, X.; Zhao, J. PredictionNet: A long short-term memory-based attention network for
+atmospheric turbulence prediction in adaptive optics. Appl. Opt. 2022, 61, 3687–3694. [CrossRef]
+25.
+Swanson, R.; Lamb, M.; Correia, C.; Sivanandam, S.; Kutulakos, K. Wavefront reconstruction and prediction with convolutional
+neuralnetworks. In Proceedings of the SPIE Astronomical Telescopes + Instrumentation, Austin, TX, USA, 10–15 June 2018;
+Volume 10703, pp. 481–490.
+26.
+Schöck, M.; Spillar, E.J. Method for a quantitative investigation of the frozen ﬂow hypothesis. JOSA A 2000, 17, 1650–1658.
+[CrossRef]
+27.
+Poyneer, L.; van Dam, M.; Véran, J.P. Experimental veriﬁcation of the frozen ﬂow atmospheric turbulence assumption with use of
+astronomical adaptive optics telemetry. JOSA A 2009, 26, 833–846. [CrossRef]
+28.
+Gendron, E.; Léna, P. Single layer atmospheric turbulence demonstrated by adaptive optics observations. Astrophys. Space Sci.
+1996, 239, 221–228. [CrossRef]
+29.
+Kern, B.; Laurence, T.A.; Martin, C.; Dimotakis, P.E. Dimotakis. Temporal coherence of individual turbulent patterns in
+atmospheric seeing. Appl. Opt. 2000, 39, 4879–4885. [CrossRef]
+30.
+Kolmogorov, A.N. The local structure of turbulence in incompressible viscous ﬂuid for very large reynolds numbers. Proc. Roy.
+Soc. Lond. Ser. A Math. Phys. Sci. 1991, 434, 9–13.
+31.
+Shi, X.; Chen, Z.; Wang, H.; Yeung, D.Y.; Wong, W.K.; Woo, W.C. Convolutional lstm network: A machine learning approach for
+precipitation nowcasting. In Proceedings of the Advances in Neural Information Processing Systems 28: Annual Conference on
+Neural Information Processing Systems, Montreal, QC, Canada, 7–12 December 2015.
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual
+author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to
+people or property resulting from any ideas, methods, instructions or products referred to in the content.

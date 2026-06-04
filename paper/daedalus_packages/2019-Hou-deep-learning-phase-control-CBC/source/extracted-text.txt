@@ -1,0 +1,561 @@
+﻿High Power Laser Science and Engineering, (2019), Vol. 7, e59, 7 pages.
+© The Author(s) 2019. This is an Open Access article, distributed under the terms of the Creative Commons Attribution licence (http://creativecommons.org/
+licenses/by/4.0/), which permits unrestricted re-use, distribution, and reproduction in any medium, provided the original work is properly cited.
+doi:10.1017/hpl.2019.46
+Deep-learning-based phase control method for tiled
+aperture coherent beam combining systems
+Tianyue Hou1, Yi An1, Qi Chang1, Pengfei Ma1, Jun Li1, Dong Zhi2, Liangjin Huang1, Rongtao Su1,
+Jian Wu1, Yanxing Ma1, and Pu Zhou1
+1College of Advanced Interdisciplinary Studies, National University of Defense Technology, Changsha 410073, China
+2Hypervelocity Aerodynamics Institute, China Aerodynamics Research and Development Center, Mianyang 621000, China
+(Received 16 June 2019; revised 8 September 2019; accepted 20 September 2019)
+Abstract
+We incorporate deep learning (DL) into tiled aperture coherent beam combining (CBC) systems for the ﬁrst time, to the
+best of our knowledge. By using a well-trained convolutional neural network DL model, which has been constructed at a
+non-focal-plane to avoid the data collision problem, the relative phase of each beamlet could be accurately estimated, and
+then the phase error in the CBC system could be compensated directly by a servo phase control system. The feasibility
+and extensibility of the phase control method have been demonstrated by simulating the coherent combining of different
+hexagonal arrays. This DL-based phase control method offers a new way of eliminating dynamic phase noise in tiled
+aperture CBC systems, and it could provide a valuable reference on alleviating the long-standing problem that the phase
+control bandwidth decreases as the number of array elements increases.
+Keywords: coherent beam combining; deep learning; phase control
+1. Introduction
+Coherent beam combining (CBC) of ﬁber lasers has great
+potential in breaking through the power limitation of a single
+laser beam while maintaining good beam quality – a topic
+that has been widely studied during the past decades[1–8]. In
+general, CBC techniques can be divided into two categories:
+ﬁlled aperture combining and tiled aperture combining[1].
+Tiled aperture coherent combining has advantages in the
+development of combined numbers, and has achieved re-
+markable results in the past[9, 10].
+It also shows great
+potential in new frontiers such as high-power structured light
+generation[11]. In high-power tiled aperture CBC systems,
+especially during operation with serious thermal and ex-
+perimental ﬂuctuations, dynamic phase noise always occurs
+and affects the performance of the combined beam.
+To
+eliminate the inﬂuence of dynamic phase noise and achieve
+constructive interference in the far-ﬁeld, the relative phase
+of each array element should be accurately controlled. For
+actively phase-locked arrays, several approaches have been
+proposed and efﬁciently implemented, including heterodyne
+detection[12], multi-dithering and single-frequency dither-
+Correspondence to:
+P. Ma and P. Zhou, No.
+109 Deya Road,
+Kaifu District, Changsha 410073, China. Email: shandapengfei@126.com
+(P. Ma); zhoupu203@163.com (P. Zhou)
+ing techniques[13–17], interferometric techniques[18], phase-
+intensity mapping[19] and the stochastic parallel gradient
+descent (SPGD) algorithm[4, 20]. Along with simultaneous
+increase of combined numbers and output power, the control
+bandwidth of the phase controller is a serious issue that
+should be considered carefully[21]. Investigations in improv-
+ing the control bandwidth have been an ongoing effort since
+various phase control methods were proposed.
+To further improve the control bandwidth, a fast and
+accurate phase extraction method is always necessary. As
+a result of their excellent real-time performance, machine
+learning and artiﬁcial intelligence algorithms may offer a
+route to further improve the phase control speed in CBC
+systems, which needs to be investigated carefully. In fact,
+this new technique has been successfully applied to many
+optical research ﬁelds, such as mode-locked lasers, optical
+microscopy and laser mode decomposition[22–25].
+Quite
+recently, it has been reported that deep reinforcement learn-
+ing methods could be used in Mach–Zehnder interferometer
+CBC structures[26]. As for the tiled aperture CBC technique
+that involves more combined channels, a feasible machine
+learning method is greatly required. There is an intuitive
+idea that constructing a deep learning (DL) network to
+learn the relationship between the intensity proﬁle of the
+combined beam and the relative phases of array elements
+1
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+2
+T. Hou et al.
+would solve this.
+In theory, by analyzing the real-time
+collected intensity proﬁle based on the network, the phase
+error of the beam array could be estimated and compensated
+directly. However, one signiﬁcant difﬁculty encountered is
+that there is no one-to-one correspondence between the far-
+ﬁeld intensity proﬁle of the combined beam and the relative
+phases of the array elements; thus the DL network would lose
+its effectiveness due to data collision. Recently, the concept
+of extracting cost functions at the non-focal-plane has been
+proposed by our group[27]. Drawing on this concept, the
+primary difﬁculty in incorporating the DL method into the
+tiled aperture CBC technique could expect to be solved.
+In this paper, we present a DL-based phase control method
+for tiled aperture coherent beam combining systems.
+To
+avoid the data collision mentioned above, non-focal-plane
+intensity proﬁles of the combined beam are used as training
+samples. We construct and train a convolutional neural net-
+work (CNN) for real-time estimation of the relative phases
+of the array elements, and the estimated phase error could be
+compensated by a servo phase control system. Such a direct
+phase compensation method does not cause an increase in
+complexity of the CBC system as the number of array
+elements increases, and it is compatible with optimization
+algorithms and dithering techniques. Our simulations are
+performed in detail to demonstrate the feasibility and exten-
+sibility of the proposed phase control technique, which has
+potential in improving the phase control bandwidth of CBC
+systems.
+2. Principle and method
+Figure 1 shows the experimental setup that could be used
+to implement the DL-based phase control method.
+The
+linearly polarized seed laser (SL) is ampliﬁed by a pre-
+ampliﬁer (PA), and is then split into multiple channels by
+a ﬁber splitter (FS). The laser beam of each channel passes
+through a ﬁber phase modulator (FPM) and cascaded ﬁber
+ampliﬁers (FAs) for power scaling. Subsequently, the laser
+beams are emitted through a collimator array and propagate
+in free space. The collimated beam array is split into two
+parts by a highly reﬂective mirror (HRM). The transmitted
+part propagates through another HRM and a focus lens (FL),
+and is then sampled by a beam splitter (BS) to feed the phase
+control system at the non-focal-plane and observe the far-
+ﬁeld intensity proﬁle at the focal plane. The intensity proﬁle
+of the combined beam collected by the CCD located at the
+non-focal-plane is sent to an FPGA controller carrying a
+well-trained CNN to estimate the phase error of the CBC
+system.
+Then, according to the outputs of the CNN, the
+FPGA controller applies control voltages to the FPMs to
+compensate the estimated phase error and achieve phase
+locking.
+The electric ﬁeld of an N-element linearly polarized fun-
+damental mode Gaussian beam array at the source plane can
+Figure 1. Experimental setup for implementing the DL-based phase control
+method for CBC. (SL: seed laser; PA: pre-ampliﬁer; FS: ﬁber splitter; FPM:
+ﬁber phase modulator; FA: ﬁber ampliﬁer; HRM: highly reﬂective mirror;
+FL: focus lens; BS: beam splitter.)
+be expressed as
+E(ρ, z = 0) =
+N
+X
+j=1
+A0 exp
+"
+−(ρ −ρj)2
+w02
+#
+× circ
+|ρ −ρj|
+d/2
+
+exp(iϕ j),
+(1)
+where A0, w0, ϕ j and d are the amplitude, waist width, initial
+phase and aperture diameter of the jth beamlet, respectively.
+ρ = xˆx+yˆy, and ρj = xjˆx+yjˆy represents the position vector
+of the jth beamlet. Under the paraxial approximation, the
+intensity proﬁle of the combined beam can be represented in
+the Fourier transform form as
+I (r, z = L) =
+
+ei(k/2L)r2
+iλL
+F{E(ρ, z = 0)ei(k/2)(1/L−1/f )ρ2}
+
+2
+,
+(2)
+where r denotes the position vector at the receiver plane.
+λ, f and L account for the wavelength, focal length and
+propagating distance, respectively. F{·} denotes the Fourier-
+transform operation.
+Note that the distance between the
+collimator array and the focus lens is far less than f and
+L.
+The intensity proﬁles of the receiver plane are input
+into the CNN for previous training and real-time phase error
+compensation. To avoid data collision, the receiver plane is
+set at the non-focal-plane (L ̸= f ), where the peak intensity
+of the sidelobes is comparable to the peak intensity of the
+main lobe.
+The CNN performing in our phase control scheme is
+modiﬁed from the VGG-16 model[28], as shown in Figure 2.
+The model is modiﬁed based on the input and output of the
+network. Concretely, the ﬁlter size of the ﬁrst convolutional
+layer of the VGG model is changed from 3 × 3 × 3 to
+3 × 3 × 1, as our input is a single intensity pattern image.
+The ReLU function is chosen for nonlinear activation after
+each convolutional layer, followed by max pooling[28]. The
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+Deep-learning-based phase control method for tiled aperture coherent beam combining systems
+3
+Figure 2. Illustration of the CNN for estimating the phase error in CBC
+systems.
+Softmax function after the last fully connected (FC) layer
+of the original VGG model is replaced by the Sigmoid
+function. The reason for this substitution is that estimating
+the relative phases of the array elements is a regression
+problem. Compared with the Softmax function, which is
+usually applied to distribute images to certain categories
+for classiﬁcation tasks, the Sigmoid function can achieve
+better performance for regression problems.
+It should be
+noted that the convolution layer, max pooling layer and
+fully connected layer in our network have their particular
+functions.
+The convolution layer extracts certain features
+from the input image through its ﬁlters, while the max pool-
+ing layer removes redundant information to greatly decrease
+the computational cost. The fully connected layer converts
+the output of previous layers into a one-dimensional vector,
+which is related to the estimated result. The network learns
+to estimate relative phase from a single intensity pattern
+with these layers. The intensity patterns are generated by
+randomly changing the relative phase of each element as
+the samples for training. Then, due to the Sigmoid function
+before the output, the phase vector with N −1 elements is
+linearly scaled to [0, 1], by dividing by 2π, as a label of the
+corresponding pattern.
+In the training procedure, the input images pass through
+the layers of the CNN and are regressed into an output vector
+with N −1 elements. The loss of our network is deﬁned
+as the mean-square error (MSE) between the output and the
+label vector. The MSE of the nth sample is expressed as
+MSE(n) =
+1
+N −1
+N−1
+X
+j=1
+(y(n)
+o [ j] −y(n)
+l
+[ j])2,
+(3)
+where yo and yl denote the output and the label vector of
+the CNN, respectively. Then, the parameters of the CNN are
+updated iteratively using back-propagated gradients based on
+the MSE loss. In our simulated research, the samples are
+trained on a desktop computer with an Intel Core i7-8700
+CPU and GTX 1080 GPU.
+When the network reaches convergence after several train-
+ing epochs, it can be used to estimate the relative phase
+of each array element. Taking an intensity pattern image
+as input, the CNN outputs a vector with N −1 elements,
+from which the estimated relative phases can be obtained
+Figure 3. Intensity proﬁles of the beam arrays consisting of (a) 7 elements
+and (b) 19 elements.
+by multiplying 2π. Based on the relative phases estimated
+by the CNN, the phase error in the CBC system could be
+compensated directly.
+3. Numerical simulation results and discussion
+In order to demonstrate the feasibility and extensibility of the
+DL-based phase control method, we investigate the coherent
+combining of 7-element and 19-element hexagonal arrays
+as examples, and numerical simulations are performed in
+detail.
+The arrangements of the beam arrays are shown
+in Figures 3(a) and 3(b), respectively. The parameters of
+the array elements w0, d and λ are assumed to be 23 mm,
+10.24 mm and 1.06 µm, respectively. The focal length is
+20 m, while the distances of the non-focal-planes behind the
+focal plane for the 7-element and 19-element array cases are
+optimized as 0.6 m and 0.4 m, respectively, according to our
+previous theoretical analysis[27].
+First, the necessity of constructing the CNN at the non-
+focal-plane should be illustrated. In training a DL network,
+if the input image corresponds to multiple labels, it would
+cause data collision, which means that the constructed DL
+network would lose its efﬁciency. In our previous work, we
+have indicated that the same far-ﬁeld intensity proﬁle of a
+symmetrical beam array could correspond to different phase
+distributions in the near ﬁeld[27]. Here, we will explain how
+this problem affects the accuracy of the DL network.
+Without loss of generality, we take the 7-element hexag-
+onal array shown in Figure 3(a) as an example. The CNNs
+are trained for 30 epochs with the prepared samples at the
+focal plane and the non-focal-plane.
+These samples are
+acquired randomly from simulation and the number of the
+samples is 100,000, which is same for the non-focal-plane
+case and the focal plane case, respectively. To analyze the
+convergence of the training process, 1000 testing samples
+have been generated randomly. The calculated average MSE
+values of the 1000 testing samples after every training epoch
+are shown in Figure 4, in which the red curve with triangle
+markers and the blue curve with square markers represent the
+non-focal-plane case and the focal plane case, respectively.
+Note that the MSE of the non-focal-plane case decreases
+from about 0.011 at the ﬁrst epoch to about 0.002 at the
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+4
+T. Hou et al.
+Figure 4. Average MSE of the CNN as a function of the number of training
+epochs.
+ﬁnal epoch, showing the high prediction accuracy of the
+convergent CNN. In contrast, the MSE of the focal plane case
+ﬂuctuates around 0.082 in the training process, indicating the
+focal-plane-constructed CNN cannot achieve convergence.
+To further evaluate the performances of the CNNs trained
+after 30 training epochs, we have tested the far-ﬁeld intensity
+proﬁles of the combined beams using the 1000 testing sam-
+ples mentioned above. Figure 5 shows a comparison in the
+performances of the CNNs trained by intensity proﬁles of the
+non-focal-plane and the focal plane. If the intensity proﬁles
+of the focal plane are used to train the CNN previously,
+the far-ﬁeld energy concentration of the phase compensated
+combined beam (Figures 5(b1)–5(b5)) is signiﬁcantly lower
+than in the case of using the non-focal-plane (Figures 5(c1)–
+5(c5)). In other words, the CNN trained at the non-focal-
+plane could reﬂect the phase distribution of the beam array
+at the source plane more accurately.
+The results of the
+1000 times simulation show that the average on-axis far-
+ﬁeld intensity of the phase-compensated combined beams in
+the case of using the CNN constructed at the focal plane is
+approximately half of that in the case of the non-focal-plane.
+Hence, fully considering the convergence of the training
+process and the accuracy of the trained CNN, the DL-based
+phase control system should be fed at the non-focal-plane.
+Then, to demonstrate the feasibility of the DL-based phase
+control method, we simulate the far-ﬁeld intensity proﬁles
+of the hexagonal beam arrays displayed in Figure 3 for the
+incoherent combining (without phase error compensation)
+and DL-based coherent combining (with DL-based phase
+compensation) cases. The case of ideal coherent combining,
+which means that the array elements are monochromatic and
+phase-matched, is also shown for a full comparison.
+For
+the coherent combining of the 7-element and 19-element
+arrays, 500 randomly generated phase errors are applied
+to the beam array for each case.
+Correspondingly, we
+investigate the efﬁciency of beam combining based on the
+average far-ﬁeld intensity proﬁle of the 500 times simulation.
+To evaluate the performance of the DL-based phase control
+method, key metrics such as Strehl ratio (SR), fringe contrast
+and power in the bucket (PIB) of the phase-compensated
+combined beams are calculated in detail for different beam
+arrays[4, 29, 30]. The SR is deﬁned as the ratio of the on-axis
+intensity of a beam to that of an equal-power ﬂat-top beam
+illuminating the same aperture. Fringe contrast is deﬁned by
+the formula (Imax −Imin)/(Imax + Imin), where Imax and Imin
+denote the maximum intensity and the adjacent minimum
+on the far-ﬁeld intensity distribution, respectively.
+PIB
+describes the energy encircled in an on-axis circular area at
+the receiver plane. The values of the metrics are determined
+Figure 5. Performances of the trained CNN for phase control. Far-ﬁeld intensity proﬁles (a1)–(a5) without phase error compensation, and with phase error
+compensation using CNNs trained at (b1)–(b5) the focal plane and (c1)–(c5) the non-focal-plane.
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+Deep-learning-based phase control method for tiled aperture coherent beam combining systems
+5
+Figure 6. Far-ﬁeld intensity proﬁles of the (a) incoherently combined beam, (b) DL-based coherently combined beam and (c) ideal coherently combined
+beam, for the case of the 7-element hexagonal array. (d) Far-ﬁeld intensity proﬁles along the x axis for the ideal coherently combined beam (red), DL-based
+coherently combined beam (green) and incoherently combined beam (blue). (e) Power in the bucket (PIB) at the focal plane as a function of the bucket radius
+for the ideal coherently combined beam (red), DL-based coherently combined beam (green) and incoherently combined beam (blue).
+by the residual phase error; thus these useful metrics could
+reﬂect the accuracy of the phase control method.
+Figure 6 shows the performance of the DL-based phase
+control method for the 7-element hexagonal array.
+Fig-
+ures 6(a)–6(c) show the average two-dimensional intensity
+distributions of the incoherently combined beam, DL-based
+coherently combined beam and ideal coherently combined
+beam at the focal plane, respectively.
+The incoherently
+combined beam spreads signiﬁcantly and has a larger spot
+size than the DL-based coherently combined beam, which
+resembles the ideal coherently combined beam. Both the
+ideal coherently combined beam and DL-based coherently
+combined beam have far-ﬁeld intensity proﬁles of con-
+centrated energy, and the fringe contrasts are calculated
+as 1 and 0.998, respectively.
+Figure 6(d) presents the
+average far-ﬁeld intensity proﬁles along the x axis.
+The
+red, green and blue dashed lines denote the ideal coherently
+combined beam, DL-based coherently combined beam and
+incoherently combined beam, respectively. The SR of the
+DL-based combined beam, which is approximately 0.98 of
+that of the ideal coherently combined beam, is almost 6.99
+times greater than the SR of the combined beam without
+phase compensation. The normalized PIB of the combined
+beams at the focal plane as a function of the bucket radius
+is calculated, as shown in Figure 6(e). The radius of the
+central lobe of the ideal coherently combined beam (red)
+and the DL-based coherently combined beam (green) is
+approximately 0.26 mm, and the normalized PIBs for the
+ideal coherently combined beam, the DL-based coherently
+combined beam and the incoherently combined beam (blue)
+at a radius of 0.26 mm are calculated as 0.61, 0.61 and 0.49,
+respectively.
+To further illustrate the extensibility of the DL-based phase
+control method, the CNN for the 19-element hexagonal array
+is constructed and the phase control performance is studied
+by simulation, as shown in Figure 7.
+Figures 7(a)–7(c)
+exhibit the average far-ﬁeld intensity proﬁles of the inco-
+herently combined beam, DL-based coherently combined
+beam and ideal coherently combined beam, respectively.
+Comparing the average intensity distributions of the com-
+bined beams, the advantage of the DL-based coherently
+combined beam (which resembles the ideal coherently com-
+bined beam) over the incoherently combined beam could be
+clearly observed. The fringe contrasts of the ideal coherently
+combined beam and DL-based coherently combined beam
+are calculated as 1 and 0.992, respectively.
+Figure 7(d)
+presents the average intensity proﬁles of the ideal coherently
+combined beam (red), DL-based coherently combined beam
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+6
+T. Hou et al.
+Figure 7. Far-ﬁeld intensity proﬁles of the (a) incoherently combined beam, (b) DL-based coherently combined beam and (c) ideal coherently combined
+beam, for the case of the 19-element hexagonal array. (d) Far-ﬁeld intensity proﬁles along the x axis for the ideal coherently combined beam (red), DL-based
+coherently combined beam (green) and incoherently combined beam (blue). (e) Power in the bucket (PIB) at the focal plane as a function of the bucket radius
+for the ideal coherently combined beam (red), DL-based coherently combined beam (green) and incoherently combined beam (blue).
+(green) and incoherently combined beam (blue) along the
+x axis at the focal plane.
+The SRs of the DL-based
+combined beam and the incoherently combined beam are
+approximately 0.84 and 0.05 of that of the ideal coherently
+combined beam. The normalized PIB as a function of radius
+for the ideal coherent combining (red), DL-based coherent
+combining (green) and incoherent combining (blue) cases is
+shown in Figure 7(e). At a radius of 0.15 mm (the radius
+of the central lobe of the ideal coherently combined beam),
+the normalized PIBs for the ideal coherently combined
+beam, the DL-based coherently combined beam and the
+incoherently combined beam are calculated as 0.62, 0.58 and
+0.32, respectively.
+In summary, the phase error in the CBC system could
+be efﬁciently estimated and compensated based on the DL
+network. Compared to the case of incoherent combining,
+the DL-based phase control method for coherent combining
+could improve the far-ﬁeld energy concentration of the com-
+bined beam signiﬁcantly. The most signiﬁcant advantage of
+the DL-based phase control method is time efﬁciency. It can
+perform non-iterative phase control with a pre-trained CNN.
+When more array elements are involved, the DL-based phase
+control method consumes the same amount of time as the
+fewer-elements-involved cases. Although a slight decrease
+in the accuracy of the CNN along with the increasing number
+of array elements could be observed, which is caused by the
+increase in complexity of the non-focal-plane intensity pro-
+ﬁle, this difﬁculty is expected to be solved by optimizing the
+CNN structure, increasing the number of training samples,
+and the assistance of optimization algorithms (such as SPGD
+algorithm)[25].
+4. Conclusion
+In this paper, we have shown that the DL-based phase control
+method could be implemented into CBC systems to directly
+compensate the phase error. Comprehensively considering
+simulation results for the convergence of the training process
+and the accuracy of the trained CNN, we have shown that,
+different from conventional active phase control methods,
+the DL-based servo phase control system should be fed at the
+non-focal-plane. Using key metrics of the combined beams
+of 7-element and 19-element hexagonal arrays to evaluate
+the phase control performance, we have demonstrated that
+the DL-based phase control method is feasible and could be
+extended. With an increase in the number of array elements,
+the complexity of the DL-based phase control system and the
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press
+
+
+Deep-learning-based phase control method for tiled aperture coherent beam combining systems
+7
+computing time of the CNN did not increase; thus the DL-
+based phase control method offers an opportunity to improve
+the phase control bandwidth of CBC systems. By optimizing
+the network structure, and in conjunction with optimization
+algorithms, the difﬁculty of a slight decrease in accuracy as
+the number of array elements is increased is expected to be
+solved – a topic which deserves further study.
+Acknowledgements
+This work was supported by the National Natural Science
+Foundation of China (Nos. 61705264 and 61705265) and
+the Natural Science Foundation of Hunan Province, China
+(No. 2019JJ10005). The authors Tianyue Hou and Yi An
+contributed equally to this work.
+References
+1. T. Y. Fan, IEEE J. Sel. Top. Quant. Elect. 11, 567 (2005).
+2. J. R. Leger, in Conference on Lasers and Electro-Optics 2010
+(Optical Society of America, 2010), paper CThG1.
+3. G. D. Goodno, C. P. Asman, J. Anderegg, S. Brosnan, E. C.
+Cheung, D. Hammons, H. Injeyan, H. Komine, W. H. Long,
+M. McClellan, S. J. McNaught, S. Redmond, R. Simpson, J.
+Sollee, M. Weber, S. B. Weiss, and M. Wickham, IEEE J. Sel.
+Top. Quant. Elect. 13, 460 (2007).
+4. P. Zhou, Z. Liu, X. Wang, Y. Ma, H. Ma, and X. Xu, IEEE J.
+Sel. Top. Quant. Elect. 15, 248 (2009).
+5. C. X. Yu, S. J. Augst, S. M. Redmond, K. C. Goldizen, D. V.
+Murphy, A. Sanchez, and T. Y. Fan, Opt. Lett. 36, 2686 (2011).
+6. E. Seise, A. Klenke, J. Limpert, and A. T¨unnermann, Opt.
+Express 18, 27827 (2010).
+7. A. Flores, I. Dajani, R. Holten, T. Ehrenreich, and B.
+Anderson, Opt. Eng. 55, 096101 (2016).
+8. Z. Liu, P. Ma, R. Su, R. Tao, Y. Ma, X. Wang, and P. Zhou, J.
+Opt. Soc. Am. B 34, A7 (2017).
+9. J. Bourderionnet, C. Bellanger, J. Primot, and A. Brignon, Opt.
+Express 19, 17053 (2011).
+10. D. Kabeya, V. Kerm`ene, M. Fabert, J. Benoist, J. Saucourt, A.
+Desfarges-Berthelemot, and A. Barth´el´emy, Opt. Express 25,
+13816 (2017).
+11. D. Zhi, T. Hou, P. Ma, Y. Ma, P. Zhou, R. Tao, X. Wang, and
+L. Si, High Power Laser Sci. Eng. 7, e33 (2019).
+12. J. Anderegg, S. Brosnan, E. Cheung, P. Epp, D. Hammons,
+H. Komine, M. Weber, and M. Wickham, Proc. SPIE 6102,
+61020U (2006).
+13. T. M. Shay, Opt. Express 14, 12188 (2006).
+14. A. Azarian, P. Bourdon, L. Lombard, Y. Jaou¨en, and O.
+Vasseur, Appl. Opt. 53, 1493 (2014).
+15. Y. Ma, X. Wang, J. Leng, H. Xiao, X. Dong, J. Zhu, W. Du,
+P. Zhou, X. Xu, L. Si, Z. Liu, and Y. Zhao, Opt. Lett. 36, 951
+(2011).
+16. X. Tang, Z. Huang, D. Zhang, X. Wang, J. Li, and C. Liu, Opt.
+Commun. 321, 198 (2014).
+17. M. Jiang, R. Su, Z. Zhang, Y. Ma, X. Wang, and P. Zhou, Appl.
+Opt. 56, 4255 (2017).
+18. M. Antier, J. Bourderionnet, C. Larat, E. Lallier, E.
+Lenormand, J. Primot, and A. Brignon, IEEE J. Sel. Top.
+Quant. Elect. 20, 0901506 (2014).
+19. D. Kabeya, V. Kermene, M. Fabert, J. Benoist, A. Desfarges-
+Berthelemot, and A. Barthelemy, Opt. Express 23, 31059
+(2015).
+20. M. A. Vorontsov and V. P. Sivokon, J. Opt. Soc. Am. A 15,
+2745 (1998).
+21. H. Ahn and H. Kong, Opt. Express 23, 12407 (2015).
+22. X. Fu, S. L. Brunton, and J. N. Kutz, Opt. Express 22, 8585
+(2014).
+23. T. Baumeister, S. L. Brunton, and J. N. Kutz, J. Opt. Soc. Am.
+B 35, 617 (2018).
+24. Y. Rivenson, Z. G¨or¨ocs, H. G¨unaydin, Y. Zhang, H. Wang, and
+A. Ozcan, Optica 4, 1437 (2017).
+25. Y. An, L. Huang, J. Li, J. Leng, L. Yang, and P. Zhou, Opt.
+Express 27, 10127 (2019).
+26. H. T¨unnermann and A. Shirakawa, Opt. Express 27, 24223
+(2019).
+27. T. Hou, Y. Zhang, Q. Chang, P. Ma, R. Su, J. Wu, Y. Ma, and
+P. Zhou, Opt. Express 27, 4046 (2019).
+28. K. Simonyan and A. Zisserman, in International Conference
+on Learning Representations (ICLR) (2015).
+29. M. A. Vorontsov and S. L. Lachinova, J. Opt. Soc. Am. A 25,
+1949 (2008).
+30. S. L. Lachinova and M. A. Vorontsov, J. Opt. Soc. Am. A 25,
+1960 (2008).
+https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press

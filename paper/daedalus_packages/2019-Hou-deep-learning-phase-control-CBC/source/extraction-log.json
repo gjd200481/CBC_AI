@@ -1,0 +1,67 @@
+﻿{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2019_HPLSE_deep_learning_phase_control_CBC.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2019-Hou-deep-learning-phase-control-CBC",
+  "pages": 7,
+  "items": [
+    {
+      "kind": "Figure",
+      "number": 1,
+      "file": "Figure-1.png",
+      "page": 2,
+      "caption": "Figure 1. Experimental setup for implementing the DL-based phase control method for CBC. (SL: seed laser; PA: pre-ampliﬁer; FS: ﬁber splitter; FPM: ﬁber phase modulator; FA: ﬁber ampliﬁer; HRM: highly reﬂective mirror; FL: focus lens; BS: beam splitter.) be expressed as",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 2,
+      "file": "Figure-2.png",
+      "page": 2,
+      "caption": "Figure 2. Illustration of the CNN for estimating the phase error in CBC systems. Softmax function after the last fully connected (FC) layer of the original VGG model is replaced by the Sigmoid function. The reason for this substitution is that estimating",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 3,
+      "file": "Figure-3.png",
+      "page": 3,
+      "caption": "Figure 3. Intensity proﬁles of the beam arrays consisting of (a) 7 elements and (b) 19 elements. by multiplying 2π. Based on the relative phases estimated by the CNN, the phase error in the CBC system could be compensated directly.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 4,
+      "file": "Figure-4.png",
+      "page": 3,
+      "caption": "Figure 4. Average MSE of the CNN as a function of the number of training epochs. ﬁnal epoch, showing the high prediction accuracy of the convergent CNN. In contrast, the MSE of the focal plane case ﬂuctuates around 0.082 in the training process, indicating the",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 5,
+      "file": "Figure-5.png",
+      "page": 4,
+      "caption": "Figure 5. Performances of the trained CNN for phase control. Far-ﬁeld intensity proﬁles (a1)–(a5) without phase error compensation, and with phase error compensation using CNNs trained at (b1)–(b5) the focal plane and (c1)–(c5) the non-focal-plane. https://doi.org/10.1017/hpl.2019.46 Published online by Cambridge University Press",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 6,
+      "file": "Figure-6.png",
+      "page": 5,
+      "caption": "Figure 6. Far-ﬁeld intensity proﬁles of the (a) incoherently combined beam, (b) DL-based coherently combined beam and (c) ideal coherently combined beam, for the case of the 7-element hexagonal array. (d) Far-ﬁeld intensity proﬁles along the x axis for the ideal coherently combined beam (red), DL-based coherently combined beam (green) and incoherently combined beam (blue). (e) Power in the bucket (PIB) at the focal plane as a function of the bucket radius for the ideal coherently combined beam (",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 7,
+      "file": "Figure-7.png",
+      "page": 5,
+      "caption": "Figure 7. Far-ﬁeld intensity proﬁles of the (a) incoherently combined beam, (b) DL-based coherently combined beam and (c) ideal coherently combined beam, for the case of the 19-element hexagonal array. (d) Far-ﬁeld intensity proﬁles along the x axis for the ideal coherently combined beam (red), DL-based coherently combined beam (green) and incoherently combined beam (blue). (e) Power in the bucket (PIB) at the focal plane as a function of the bucket radius for the ideal coherently combined beam ",
+      "extraction": "page screenshot for review"
+    }
+  ],
+  "notes": [
+    "Figures/tables were saved as page-level screenshots for batch reliability.",
+    "paper.md is written as UTF-8 with BOM to avoid Windows mojibake."
+  ]
+}

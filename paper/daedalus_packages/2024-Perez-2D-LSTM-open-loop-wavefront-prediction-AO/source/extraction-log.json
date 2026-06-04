@@ -1,0 +1,187 @@
+﻿{
+  "source_pdf": "D:\\CBC_AI\\paper\\journals\\2024_Photonics_2D_LSTM_open_loop_wavefront_prediction.pdf",
+  "package": "C:\\Users\\93094\\Documents\\08.Paper\\2024-Perez-2D-LSTM-open-loop-wavefront-prediction-AO",
+  "pages": 18,
+  "items": [
+    {
+      "kind": "Figure",
+      "number": 1,
+      "file": "Figure-1.png",
+      "page": 3,
+      "caption": "Figure 1. Scheme of single-conjugated AO in open-loop configuration. Distorted light passes through the Shack–Hartmann WFS, which sends information to DM to correct it. Data used along this paper are provided by a simulation tool, Simulation ‘Optique Adaptative’ with Python (SOAPY) [15]. SOAPY conducts end-to-end simulations of com- prehensive AO systems, spanning the creation of atmospheric screens to the final measure-",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 2,
+      "file": "Figure-2.png",
+      "page": 5,
+      "caption": "Figure 2. Simulated SCAO system and its data flow. Three cases of slopes are considered for calculating wavefront error in experiments. This methodology facilitates a nuanced appraisal of the suggested model’s efficacy within a comparable framework. The objective is to scrutinize how various prediction models fare concerning wavefront error prediction via artificial neural networks. However,",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 3,
+      "file": "Figure-3.png",
+      "page": 10,
+      "caption": "Figure 3. Residual error for 1-delay, original model, and GPE model. First frame.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 4,
+      "file": "Figure-4.png",
+      "page": 11,
+      "caption": "Figure 4. Residual error for 2-delay, original, and GPE models. Second frame. 4.2. 2D-LSTM model. In contrast, when evaluating the 2D-LSTM architecture, as mentioned earlier, the most favorable real-time predictions are observed under the conditions and telescope configuration assumed within the simulation. This enhancement is evident in both error",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 5,
+      "file": "Figure-5.png",
+      "page": 11,
+      "caption": "Figure 5. Residual error for 1-delay, original, and 2D-LSTM models. First frame. Photonics 2024, 11, 240 12 of 18",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 6,
+      "file": "Figure-6.png",
+      "page": 12,
+      "caption": "Figure 6. Residual error for 2-delay, original, and 2D-LSTM models. Second frame.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 7,
+      "file": "Figure-7.png",
+      "page": 12,
+      "caption": "Figure 7. Residual error for 3-delay, original, and 2D-LSTM models. Third frame.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 8,
+      "file": "Figure-8.png",
+      "page": 13,
+      "caption": "Figure 8. Residual error for 1-delay and 2D-LSTM model with different GSMag values. First frame. 4.5. Analysis of Different Turbulence Strength As mentioned before, a larger r0 value indicates a more stable atmosphere, which means fewer fluctuations and distortions in the light passing through it. Conversely, a smaller r0 value implies a more unstable atmosphere with greater turbulence, making it",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 9,
+      "file": "Figure-9.png",
+      "page": 14,
+      "caption": "Figure 9. Residual error for 2D-LSTM model with different r0 values. First frame. Photonics 2024, 11, 240 15 of 18",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Figure",
+      "number": 10,
+      "file": "Figure-10.png",
+      "page": 15,
+      "caption": "Figure 10. Residual error for 2D-LSTM model with different multilayer configurations. First frame.",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 1,
+      "file": "Table-1.png",
+      "page": 3,
+      "caption": "Table 1. Main set of parameters for the Soapy SCAO simulation. Unless specified, simulations run with this set of parameters. Module Parameter Value",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 2,
+      "file": "Table-2.png",
+      "page": 7,
+      "caption": "Table 2. The network is depicted, showing the layers that compose it, along with the input and output sizes, as well as the trainable parameters comprising the network. Layer Input Shape Output Shape",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 3,
+      "file": "Table-3.png",
+      "page": 10,
+      "caption": "Table 3. First time step average residual error and proper reduction with original and GPE models. Case Avg Res Error [%] Error Reduction [%] 1-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 4,
+      "file": "Table-4.png",
+      "page": 10,
+      "caption": "Table 4. Second time step average residual error and proper reduction with original and GPE models. Case Avg Res Error [%] Error Reduction [%] 2-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 5,
+      "file": "Table-5.png",
+      "page": 12,
+      "caption": "Table 5. First time step average residual error and proper reduction with original and 2D-LSTM models. Case Avg Res Error [%] Error Reduction [%] 1-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 6,
+      "file": "Table-6.png",
+      "page": 12,
+      "caption": "Table 6. Second time step average residual error and proper reduction with original and 2D- LSTM models. Case Avg Res Error [%] Error Reduction [%]",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 7,
+      "file": "Table-7.png",
+      "page": 13,
+      "caption": "Table 7. Third time step average residual error and proper reduction with original and 2D-LSTM models. Case Avg Res Error [%] Error Reduction [%] 3-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 8,
+      "file": "Table-8.png",
+      "page": 13,
+      "caption": "Table 8. First time step average residual error and proper reduction, global comparison. Case Avg Res Error [%] Error Reduction [%] 1-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 9,
+      "file": "Table-9.png",
+      "page": 13,
+      "caption": "Table 9. Second time step average residual error and proper reduction, global comparison. Case Avg Res Error [%] Error Reduction [%] 2-delay",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 10,
+      "file": "Table-10.png",
+      "page": 13,
+      "caption": "Table 10. First time step average residual error and proper reduction for 2D-LSTM model with different GSMag. Case Avg Res Error [%] Error Reduction [%]",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 11,
+      "file": "Table-11.png",
+      "page": 14,
+      "caption": "Table 11. First time step average residual error and proper reduction for 2D-LSTM model with different r0. Case Avg Res Error [%] Error Reduction [%]",
+      "extraction": "page screenshot for review"
+    },
+    {
+      "kind": "Table",
+      "number": 12,
+      "file": "Table-12.png",
+      "page": 15,
+      "caption": "Table 12. First time step average residual error (reference errors are included) and proper reduction for 2D-LSTM model with different multilayer configurations. Case Ref Error [%] Avg Res Error [%]",
+      "extraction": "page screenshot for review"
+    }
+  ],
+  "notes": [
+    "Figures/tables were saved as page-level screenshots for batch reliability.",
+    "paper.md is written as UTF-8 with BOM to avoid Windows mojibake."
+  ]
+}
