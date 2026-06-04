@@ -6,21 +6,18 @@ import matplotlib.pyplot as plt
 # 参数设置
 # ==========================
 
-# 网格采样点数。
+
 N = 512
-# 近场计算窗口尺寸，单位为米。
 L = 10e-3
-# 单束高斯光的腰斑半径，单位为米。
 w0 = 0.5e-3
-# 两束光在 x 方向上的中心间距，单位为米。
 d = 1.5e-3
-# 两束光之间的相位差。
 phi = np.pi
 
 
 # ==========================
 # 坐标网格
 # ==========================
+
 
 x = np.linspace(-L / 2, L / 2, N)
 X, Y = np.meshgrid(x, x)
@@ -29,6 +26,7 @@ X, Y = np.meshgrid(x, x)
 # ==========================
 # 两束高斯光
 # ==========================
+
 
 # 第一束光位于 x = -d/2，作为相位参考光束。
 E1 = np.exp(-((X + d / 2) ** 2 + Y**2) / w0**2)
@@ -42,7 +40,7 @@ E2 = E2 * np.exp(1j * phi)
 # 近场叠加
 # ==========================
 
-# 两束光相干叠加，得到总复电场。
+
 E = E1 + E2
 
 
@@ -50,10 +48,8 @@ E = E1 + E2
 # 远场计算
 # ==========================
 
-# 用二维傅里叶变换模拟远场衍射图样。
-far_field = np.fft.fftshift(np.fft.fft2(E))
 
-# 远场光强为复电场模长平方，并归一化到最大值为 1。
+far_field = np.fft.fftshift(np.fft.fft2(E))
 intensity = np.abs(far_field) ** 2
 intensity = intensity / np.max(intensity)
 
@@ -61,6 +57,7 @@ intensity = intensity / np.max(intensity)
 # ==========================
 # 结果可视化
 # ==========================
+
 
 plt.figure(figsize=(10, 4))
 
@@ -74,7 +71,7 @@ zoom = 20
 center = N // 2
 center_intensity = intensity[
     center - zoom:center + zoom,
-    center - zoom:center + zoom
+    center - zoom:center + zoom,
 ]
 
 plt.subplot(1, 2, 2)

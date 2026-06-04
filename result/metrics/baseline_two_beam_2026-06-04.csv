@@ -1,0 +1,3 @@
+date,model,dataset,samples,noise_sigma,rmse_rad,rmse_deg,mean_error_rad,mean_error_deg,device
+2026-06-04,two_beam_cnn__noise_0.05,dataset/two_beam/images_noise_0.05.npy,1000,0.05,0.02974343,1.7041728,-0.0030478893,-0.17463118,cpu
+
