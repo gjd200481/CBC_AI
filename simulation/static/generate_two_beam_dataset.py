@@ -37,6 +37,10 @@ def main():
     parser.add_argument("--waist", type=float, default=0.5e-3)
     parser.add_argument("--beam-distance", type=float, default=1.5e-3)
     parser.add_argument("--crop-size", type=int, default=160)
+    # 当前脚本专门生成双光束数据。保留 num-beams 参数用于配置记录和未来多光束扩展。
+    parser.add_argument("--num-beams", type=int, default=2, choices=[2])
+    parser.add_argument("--phase-min", type=float, default=-3.141592653589793)
+    parser.add_argument("--phase-max", type=float, default=3.141592653589793)
     # seed 用于保证每次生成的数据完全可复现。
     parser.add_argument("--seed", type=int, default=20260604)
     # 输出目录默认放在 dataset/two_beam 下；该目录被 .gitignore 忽略，避免大数据误提交。
@@ -69,6 +73,8 @@ def main():
         waist=args.waist,
         beam_distance=args.beam_distance,
         crop_size=args.crop_size,
+        phase_min=args.phase_min,
+        phase_max=args.phase_max,
         seed=args.seed,
     )
 
@@ -84,6 +90,8 @@ def main():
         waist=args.waist,
         beam_distance=args.beam_distance,
         crop_size=args.crop_size,
+        phase_min=args.phase_min,
+        phase_max=args.phase_max,
         seed=args.seed,
         image_path=image_path,
         label_path=label_path,

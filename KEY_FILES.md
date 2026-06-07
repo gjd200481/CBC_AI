@@ -1,0 +1,302 @@
+# CBC_AI 关键文件说明
+
+本文档用于说明当前项目中关键文件和文件夹的地址、作用与使用顺序。项目当前主线为：
+
+```text
+远场光强图像 -> CNN 相位反演 -> sin/cos 相位编码 -> FFT 物理一致性损失
+```
+
+## 根目录文件
+
+### `PROJECT_PLAN.md`
+
+- 地址：`D:\CBC_AI\PROJECT_PLAN.md`
+- 作用：项目总计划文件。
+- 当前内容：
+  - 明确 2026 年 7 月底前的项目目标。
+  - 将主线确定为“基于傅里叶光学约束的 CNN 相位误差反演”。
+  - 按两天一个周期安排数据生成、模型训练、物理约束、鲁棒性实验、论文写作。
+  - 将此前的 `CNN + LSTM` 远场序列预测路线暂时降级为后续拓展方向。
+- 使用建议：
+  - 每完成一个周期后，在对应 Cycle 下补充“状态”。
+  - 每次修改研究路线或摘要后，应优先同步修改这个文件。
+
+### `KEY_FILES.md`
+
+- 地址：`D:\CBC_AI\KEY_FILES.md`
+- 作用：当前文件，用于快速理解项目结构和关键文件用途。
+- 使用建议：
+  - 新增重要脚本、数据集、实验结果或论文材料后，应同步补充说明。
+
+### `.gitignore`
+
+- 地址：`D:\CBC_AI\.gitignore`
+- 作用：控制哪些文件不提交到 Git。
+- 当前重点规则：
+  - `dataset/`：本地数据集较大，不提交。
+  - `models/`：模型权重较大，不提交。
+  - `result/`：结果目录默认忽略，但关键实验日志和指标表可在需要时强制提交。
+  - `*.npy`、`*.pth`、`*.pt`、`*.ckpt`：数组数据和模型权重默认不提交。
+- 使用建议：
+  - 数据集配置、实验日志、指标 CSV 可以选择性强制提交。
+  - 原始大数据和训练权重一般不提交，避免仓库膨胀。
+
+## 仿真代码
+
+### `simulation/common/two_beam_core.py`
+
+- 地址：`D:\CBC_AI\simulation\common\two_beam_core.py`
+- 作用：双光束相干合成仿真的核心公共模块，是当前最重要的物理建模文件。
+- 主要功能：
+  - `create_grid()`：建立二维近场坐标网格。
+  - `gaussian_beam()`：生成单束高斯光近场复振幅。
+  - `two_beam_near_field()`：生成双光束近场复振幅，第一束为参考相位，第二束带相位误差。
+  - `far_field_intensity()`：通过 FFT 由近场复振幅计算远场光强。
+  - `add_gaussian_noise()`：给归一化远场图像加入探测器高斯噪声。
+  - `crop_center()`：裁剪远场中心区域。
+  - `phase_to_sin_cos()`：将相位转换为 `[sin(phi), cos(phi)]` 标签。
+  - `wrap_phase()`：将相位折回 `[-pi, pi]`。
+  - `generate_two_beam_dataset()`：生成静态双光束远场图像、sin/cos 标签和原始相位。
+  - `dataset_config()`：生成静态数据集 JSON 配置。
+  - `generate_two_beam_sequence_dataset()`：生成动态序列数据，当前作为后续拓展备用。
+- 当前主线用途：
+  - 提供论文中“傅里叶光学仿真数据集”的基础。
+  - 后续物理一致性损失也应复用或对齐这里的近场构造和 FFT 传播逻辑。
+- 注意事项：
+  - 当前静态主任务只使用双光束，第一束相位固定为 0，网络估计第二束相对相位。
+  - `generate_two_beam_dataset()` 已支持 `phase_min` 和 `phase_max`，默认完整覆盖 `[-pi, pi]`。
+
+### `simulation/static/generate_two_beam_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_two_beam_dataset.py`
+- 作用：生成可复现的静态双光束远场数据集。
+- 输入参数：
+  - `--num-samples`：样本数。
+  - `--noise-sigma`：探测器高斯噪声标准差。
+  - `--num-points`：近场计算网格采样点数。
+  - `--window-size`：近场窗口物理尺寸，单位 m。
+  - `--waist`：高斯光束腰斑半径，单位 m。
+  - `--beam-distance`：两束光中心间距，单位 m。
+  - `--crop-size`：远场中心裁剪尺寸。
+  - `--phase-min`、`--phase-max`：相位采样范围。
+  - `--seed`：随机种子。
+  - `--output-dir`：输出目录。
+  - `--prefix`：输出文件名前缀。
+  - `--save-phases`：是否保存原始相位数组。
+- 输出文件：
+  - `images_<prefix>.npy`
+  - `labels_<prefix>.npy`
+  - `phases_<prefix>.npy`
+  - `config_<prefix>.json`
+- 当前主数据集生成命令见：
+  - `D:\CBC_AI\result\logs\cycle03_static_dataset_2026-06-07.md`
+
+### `simulation/static/two_beam_diff_noise.py`
+
+- 地址：`D:\CBC_AI\simulation\static\two_beam_diff_noise.py`
+- 作用：生成指定噪声强度的双光束数据集。
+- 当前用途：
+  - 用于噪声鲁棒性实验。
+  - 可生成 `noise_0.01`、`noise_0.03`、`noise_0.05` 等数据集。
+- 与 `generate_two_beam_dataset.py` 的关系：
+  - 两者底层都调用 `simulation/common/two_beam_core.py`。
+  - `generate_two_beam_dataset.py` 更通用，建议作为以后主数据生成入口。
+  - `two_beam_diff_noise.py` 保留用于兼容旧训练脚本和快速生成噪声数据。
+
+### `simulation/dynamic/generate_two_beam_sequence_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\dynamic\generate_two_beam_sequence_dataset.py`
+- 作用：生成远场序列数据。
+- 当前状态：
+  - 原本服务于 `CNN + LSTM` 未来相位预测路线。
+  - 新摘要下暂不作为 7 月底主线任务。
+- 后续用途：
+  - 如果论文后续需要扩展“动态扰动预测”或“闭环控制”，可以重新启用。
+
+### `simulation/static/*.py` 其他脚本
+
+- 地址：`D:\CBC_AI\simulation\static\`
+- 作用：早期仿真、验证和演示脚本。
+- 文件包括：
+  - `gaussian_fft.py`：高斯光束 FFT 传播早期验证。
+  - `two_beam_interference.py`：双光束干涉图样演示。
+  - `twobeam_gaussian.py`：双高斯光束近场/远场演示。
+  - `day2_5_diffraction.py`：早期衍射仿真实验脚本。
+- 当前优先级：
+  - 这些脚本主要用于理解和回溯，不作为主训练入口。
+  - 新实验应优先调用 `simulation/common/two_beam_core.py`。
+
+## 训练与评估代码
+
+### `train/evaluate_two_beam.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_two_beam.py`
+- 作用：当前双光束 CNN baseline 训练脚本。
+- 当前功能：
+  - 读取 `.npy` 远场图像和 `[sin(phi), cos(phi)]` 标签。
+  - 建立简单三层 CNN。
+  - 使用 MSE 损失训练相位标签。
+  - 输出预测相位和真实相位的 RMSE。
+- 当前默认数据：
+  - `dataset/two_beam/images_noise_0.05.npy`
+  - `dataset/two_beam/labels_noise_0.05.npy`
+- 后续需要改进：
+  - 增加命令行参数，避免路径写死。
+  - 增加训练/验证/测试固定划分。
+  - 输出训练曲线和指标 CSV。
+  - 拆出 `Dataset`、模型、相位误差函数，为 Cycle 04 和 Cycle 05 做准备。
+
+### `model/demo_evaluate_two_beam_model.py`
+
+- 地址：`D:\CBC_AI\model\demo_evaluate_two_beam_model.py`
+- 作用：加载已训练 CNN 模型并评估相位 RMSE。
+- 当前功能：
+  - 从 `.pth` 模型文件读取网络权重。
+  - 读取评估数据集。
+  - 将网络输出 `[sin(phi), cos(phi)]` 解码为相位。
+  - 计算周期相位误差和 RMSE。
+- 使用场景：
+  - 训练完成后快速复查模型性能。
+  - 对比不同噪声数据集上的泛化误差。
+
+### `model/demo_two_beam_inference.py`
+
+- 地址：`D:\CBC_AI\model\demo_two_beam_inference.py`
+- 作用：单样本推理演示脚本。
+- 使用场景：
+  - 展示模型如何从一张远场图像预测相位。
+  - 后续可用于生成论文中的典型样例图。
+
+## 数据目录
+
+### `dataset/`
+
+- 地址：`D:\CBC_AI\dataset\`
+- 作用：保存本地生成的数据集。
+- Git 状态：
+  - 被 `.gitignore` 忽略，不提交到仓库。
+- 当前重要数据集：
+  - `dataset/two_beam/main_static/`
+    - 当前主路线第一版干净静态双光束数据集。
+    - 样本数：2000。
+    - 图像尺寸：`160 x 160`。
+    - 相位范围：`[-pi, pi]`。
+    - 噪声强度：0。
+  - `dataset/two_beam/`
+    - 旧版噪声数据集，如 `noise_0.05`。
+  - `dataset/two_beam_sequence/`
+    - 动态序列数据，当前为后续拓展备用。
+- 当前主数据集文件：
+  - `D:\CBC_AI\dataset\two_beam\main_static\images_main_clean_two_beam.npy`
+  - `D:\CBC_AI\dataset\two_beam\main_static\labels_main_clean_two_beam.npy`
+  - `D:\CBC_AI\dataset\two_beam\main_static\phases_main_clean_two_beam.npy`
+  - `D:\CBC_AI\dataset\two_beam\main_static\config_main_clean_two_beam.json`
+
+## 结果目录
+
+### `result/`
+
+- 地址：`D:\CBC_AI\result\`
+- 作用：保存实验日志、指标和图表。
+- 子目录：
+  - `result/logs/`：实验记录，写清任务目标、命令、参数、结果和结论。
+  - `result/metrics/`：CSV 指标表，便于后续画图和汇总。
+  - `result/figures/`：训练曲线、远场图、误差图等。
+- Git 状态：
+  - 默认被 `.gitignore` 忽略。
+  - 关键日志和指标表可强制提交。
+
+### `result/logs/cycle03_static_dataset_2026-06-07.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle03_static_dataset_2026-06-07.md`
+- 作用：记录 Cycle 03 主静态数据集生成过程。
+- 内容：
+  - 数据集路径。
+  - 生成命令。
+  - 数据形状。
+  - 数值检查。
+  - Cycle 03 结论。
+
+### `result/metrics/cycle03_static_dataset_2026-06-07.csv`
+
+- 地址：`D:\CBC_AI\result\metrics\cycle03_static_dataset_2026-06-07.csv`
+- 作用：以 CSV 形式保存 Cycle 03 数据集检查指标。
+- 当前指标：
+  - 样本数。
+  - 图像形状。
+  - 标签形状。
+  - 噪声强度。
+  - 相位范围。
+  - 图像均值和标准差。
+  - 标签与真实相位 sin/cos 的最大误差。
+
+## 文献目录
+
+### `paper/`
+
+- 地址：`D:\CBC_AI\paper\`
+- 作用：保存论文阅读材料、期刊 PDF、学位论文和 Daedalus 解析结果。
+- 子目录：
+  - `paper/journals/`：英文和中文期刊论文 PDF。
+  - `paper/journals/chinese/`：中文期刊论文 PDF 和清单。
+  - `paper/theses/`：学位论文。
+  - `paper/daedalus_packages/`：用 valey-literature-daedalus 生成的论文陪读包。
+
+### `paper/journals/chinese/README.md`
+
+- 地址：`D:\CBC_AI\paper\journals\chinese\README.md`
+- 作用：中文期刊论文清单。
+- 内容：
+  - 每篇中文论文的文件名。
+  - 期刊和年份。
+  - 主题。
+  - 对本项目的用途。
+  - 来源链接。
+  - 推荐阅读顺序。
+- 当前用途：
+  - 支撑论文引言和相关工作。
+  - 支撑传统 SPGD、主动相位控制、机器学习自适应光学等背景论述。
+
+### `paper/daedalus_packages/`
+
+- 地址：`D:\CBC_AI\paper\daedalus_packages\`
+- 作用：保存文献精读结果。
+- 典型内容：
+  - `paper.md`：论文中英文陪读式解析。
+  - `figures/`：论文图表提取结果。
+  - `source/`：原始 PDF、抽取文本和解析日志。
+- 当前用途：
+  - 为论文写作提供方法、实验指标和对比文献参考。
+
+## 模型权重目录
+
+### `models/`
+
+- 地址：`D:\CBC_AI\models\`
+- 作用：保存训练得到的模型权重。
+- Git 状态：
+  - 被 `.gitignore` 忽略，不提交到仓库。
+- 当前用途：
+  - 保存 CNN baseline 权重。
+  - 后续保存物理约束 CNN 权重。
+- 注意事项：
+  - 提交代码时不要把 `.pth` 文件加入 Git。
+  - 需要复现实验时，应优先通过训练脚本重新生成模型权重。
+
+## 当前优先使用顺序
+
+1. 查看计划：`PROJECT_PLAN.md`
+2. 生成或复查数据：`simulation/static/generate_two_beam_dataset.py`
+3. 检查物理仿真逻辑：`simulation/common/two_beam_core.py`
+4. 查看主数据集记录：`result/logs/cycle03_static_dataset_2026-06-07.md`
+5. 进入下一步训练前，整理：`train/evaluate_two_beam.py`
+6. 评估模型时使用：`model/demo_evaluate_two_beam_model.py`
+7. 写论文背景时查：`paper/journals/chinese/README.md` 和 `paper/daedalus_packages/`
+
+## 下一步建议
+
+按照新计划，下一步是 Cycle 04：
+
+- 将 `Dataset`、`DataLoader`、相位解码、周期相位误差 RMSE 独立成可复用模块。
+- 让训练脚本支持命令行传入数据路径、模型路径、epoch、batch size 和随机种子。
+- 为后续普通 CNN baseline 和物理约束 CNN 共用同一套数据读取与评估函数。

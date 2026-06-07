@@ -1,0 +1,2 @@
+dataset,num_samples,image_shape,label_shape,noise_sigma,phase_min_rad,phase_max_rad,image_min,image_max,image_mean,image_std,phase_min_sampled,phase_max_sampled,phase_mean,phase_std,max_label_error,seed
+main_clean_two_beam,2000,"(2000, 160, 160)","(2000, 2)",0.0,-3.141592653589793,3.141592653589793,0.0,1.0,0.0015072247,0.0259504467,-3.1386303902,3.1414902210,-0.0440238826,1.8229978085,1.1920928955e-07,20260608

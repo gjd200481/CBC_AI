@@ -29,6 +29,8 @@ def main():
     parser.add_argument("--waist", type=float, default=0.5e-3)
     parser.add_argument("--beam-distance", type=float, default=1.5e-3)
     parser.add_argument("--crop-size", type=int, default=160)
+    parser.add_argument("--phase-min", type=float, default=-3.141592653589793)
+    parser.add_argument("--phase-max", type=float, default=3.141592653589793)
     parser.add_argument("--seed", type=int, default=20260604)
     parser.add_argument("--output-dir", type=Path, default=Path("dataset/two_beam"))
     # prefix 默认是 noise_0.05，因此输出文件会与 train/evaluate_two_beam.py 的路径一致。
@@ -52,6 +54,8 @@ def main():
         waist=args.waist,
         beam_distance=args.beam_distance,
         crop_size=args.crop_size,
+        phase_min=args.phase_min,
+        phase_max=args.phase_max,
         seed=args.seed,
     )
 
@@ -67,6 +71,8 @@ def main():
         waist=args.waist,
         beam_distance=args.beam_distance,
         crop_size=args.crop_size,
+        phase_min=args.phase_min,
+        phase_max=args.phase_max,
         seed=args.seed,
         image_path=image_path,
         label_path=label_path,

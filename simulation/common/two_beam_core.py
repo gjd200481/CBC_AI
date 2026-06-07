@@ -239,6 +239,8 @@ def generate_two_beam_dataset(
     waist=0.5e-3,
     beam_distance=1.5e-3,
     crop_size=160,
+    phase_min=-np.pi,
+    phase_max=np.pi,
     seed=None,
 ):
     """生成双光束相位估计数据集。
@@ -251,6 +253,11 @@ def generate_two_beam_dataset(
     5. 裁剪中心区域。
     6. 保存图像、sin/cos 标签和原始相位。
     """
+    if phase_min >= phase_max:
+        raise ValueError(
+            f"phase_min must be smaller than phase_max, got {phase_min} >= {phase_max}"
+        )
+
     # default_rng 支持显式 seed，便于复现实验。
     rng = np.random.default_rng(seed)
     x_grid, y_grid = create_grid(num_points=num_points, window_size=window_size)
@@ -260,8 +267,8 @@ def generate_two_beam_dataset(
     phases = []
 
     for _ in range(num_samples):
-        # 相位差均匀分布在 [-pi, pi]，覆盖完整相位周期。
-        phase = rng.uniform(-np.pi, np.pi)
+        # 相位差均匀分布在指定范围内；默认 [-pi, pi] 覆盖完整相位周期。
+        phase = rng.uniform(phase_min, phase_max)
         near_field = two_beam_near_field(
             x_grid=x_grid,
             y_grid=y_grid,
@@ -387,6 +394,8 @@ def dataset_config(
     waist,
     beam_distance,
     crop_size,
+    phase_min,
+    phase_max,
     seed,
     image_path,
     label_path,
@@ -399,6 +408,7 @@ def dataset_config(
     """
     return {
         "task": "two_beam_phase_estimation",
+        "num_beams": 2,
         "num_samples": num_samples,
         "noise_sigma": noise_sigma,
         "num_points": num_points,
@@ -406,11 +416,15 @@ def dataset_config(
         "waist_m": waist,
         "beam_distance_m": beam_distance,
         "crop_size": crop_size,
+        "phase_min_rad": phase_min,
+        "phase_max_rad": phase_max,
         "seed": seed,
         "image_path": str(image_path),
         "label_path": str(label_path),
         "phase_path": None if phase_path is None else str(phase_path),
         "label_format": "[sin(phi), cos(phi)]",
+        "image_shape": "[num_samples, crop_size, crop_size]",
+        "label_shape": "[num_samples, 2]",
     }
 
 
