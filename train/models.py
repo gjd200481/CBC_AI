@@ -2,10 +2,11 @@ import torch.nn as nn
 
 
 class SimplePhaseCNN(nn.Module):
-    """用于双光束相位反演的基础 CNN。
+    """用于相干合成相位反演的基础 CNN。
 
     输入为单通道远场光强图像，默认尺寸 160 x 160。
-    输出为 [sin(phi), cos(phi)]。后续多光束扩展时，可通过 output_dim 调整输出维度。
+    双光束任务输出 [sin(phi), cos(phi)]。
+    7 光束任务可设置 output_dim=12，输出 6 路相对相位的 sin/cos 编码。
     """
 
     def __init__(self, image_size=160, output_dim=2):

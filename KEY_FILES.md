@@ -191,6 +191,24 @@
   - 已用于 Cycle 05 训练正式普通 CNN baseline。
   - 后续物理约束 CNN 可复用其中的数据读取、训练循环和指标记录思路。
 
+### `train/train_seven_beam_baseline.py`
+
+- 地址：`D:\CBC_AI\train\train_seven_beam_baseline.py`
+- 作用：7 光束普通 CNN baseline 训练入口。
+- 当前功能：
+  - 默认读取 `dataset/seven_beam/main_static/images_main_clean_seven_beam.npy` 和 `labels_main_clean_seven_beam.npy`。
+  - 使用 `train.data_utils.build_dataloaders()` 构建训练、验证和测试集。
+  - 使用 `train.models.SimplePhaseCNN(image_size=160, output_dim=12)` 输出 6 路相对相位的 12 维 `sin/cos` 编码。
+  - 使用普通 `MSELoss` 作为监督损失，不包含物理一致性项。
+  - 输出整体 RMSE、MAE、平均误差，以及 6 个外圈通道各自的 RMSE。
+- 当前结果：
+  - 已用于 Cycle 12 训练首版 7 光束 baseline。
+  - 测试集整体 RMSE 为 `1.02698 rad`，MAE 为 `0.81906 rad`。
+  - 第 4 通道 RMSE 最高，约为 `1.14974 rad`，说明多通道反演中存在通道偏差。
+- 后续用途：
+  - 作为 7 光束物理约束 CNN 的直接对照。
+  - 后续如果引入更深 CNN、残差网络或动态卷积，可先与该脚本结果比较。
+
 ### `train/data_utils.py`
 
 - 地址：`D:\CBC_AI\train\data_utils.py`
@@ -224,8 +242,8 @@
 - 当前模型：
   - `SimplePhaseCNN`：三层卷积 + 全连接回归头。
   - 输入：单通道远场光强图。
-  - 输出：`[sin(phi), cos(phi)]`。
-  - 后续多束扩展时可调整 `output_dim`。
+  - 双光束输出：`[sin(phi), cos(phi)]`。
+  - 7 光束输出：设置 `output_dim=12`，对应 6 路相对相位的 `sin/cos` 编码。
 
 ### `train/physics_loss.py`
 

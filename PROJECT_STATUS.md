@@ -145,6 +145,15 @@ result/logs/cycle11_seven_beam_smoke_2026-06-08.md
 result/metrics/cycle11_seven_beam_smoke_2026-06-08.csv
 ```
 
+Cycle 12 已完成首版 7 光束普通 CNN baseline。使用 1024 个干净样本，训练/验证/测试划分为 `716/153/155`。普通 CNN 测试集整体 RMSE 为 `1.02698 rad`，MAE 为 `0.81906 rad`，逐通道 RMSE 范围约为 `0.94510 rad` 至 `1.14974 rad`。记录文件：
+
+```text
+result/logs/cycle12_seven_beam_baseline_2026-06-08.md
+result/metrics/baseline_cnn_main_clean_seven_beam_2026-06-08.csv
+result/metrics/baseline_cnn_main_clean_seven_beam_summary_2026-06-08.csv
+result/figures/baseline_cnn_main_clean_seven_beam_2026-06-08.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -381,11 +390,25 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 
 ### Cycle 11
 
-加入位置偏移扰动，测试子光束中心位置误差对相位反演的影响。
+已完成 7 光束基础仿真模块和 smoke 数据集。
+
+核心输出：
+
+- `simulation/common/multi_beam_core.py`
+- `simulation/static/generate_seven_beam_dataset.py`
+- `result/logs/cycle11_seven_beam_smoke_2026-06-08.md`
 
 ### Cycle 12
 
-生成混合扰动数据集，为论文主实验做准备。
+已完成 7 光束普通 CNN baseline。
+
+核心输出：
+
+- `train/train_seven_beam_baseline.py`
+- `result/logs/cycle12_seven_beam_baseline_2026-06-08.md`
+- `result/metrics/baseline_cnn_main_clean_seven_beam_summary_2026-06-08.csv`
+
+下一步进入 7 光束物理约束 CNN：将 `train/physics_loss.py` 从双光束扩展到 7 光束，根据 6 路预测相位重建 7 光束近场，并把重建远场与输入远场的误差加入总损失。
 
 ## 当前阶段性判断
 

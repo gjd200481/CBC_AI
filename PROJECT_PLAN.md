@@ -230,6 +230,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束普通 CNN baseline 结果。
 
+状态：已完成首版 7 光束普通 CNN baseline。生成 1024 样本干净 7 光束静态数据集，采用 `SimplePhaseCNN(output_dim=12)` 训练 30 轮。测试集整体 RMSE 为 `1.02698 rad`，MAE 为 `0.81906 rad`；逐通道 RMSE 范围约为 `0.94510 rad` 至 `1.14974 rad`。记录见 `result/logs/cycle12_seven_beam_baseline_2026-06-08.md`。
+
 ### Cycle 13：2026-06-28 至 2026-06-29
 
 - 将傅里叶物理一致性模块从双光束扩展到 7 光束。
