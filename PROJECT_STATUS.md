@@ -164,6 +164,15 @@ result/metrics/cycle13_seven_beam_physics_vs_baseline_2026-06-08.csv
 result/figures/physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.png
 ```
 
+Cycle 14 已完成 7 光束 `lambda_phy` 权重消融。快速消融比较 `0, 0.01, 0.05, 0.1, 0.5, 1.0`，其中 `lambda_phy=0.1` 的 12 epoch 相位 RMSE 最低。进一步复训 `lambda_phy=0.5` 到 30 epoch 后，RMSE 为 `1.05027 rad`，不如 `lambda_phy=0.1` 的 `1.02269 rad`。当前主实验候选权重暂定为 `lambda_phy=0.1`。记录文件：
+
+```text
+result/logs/cycle14_seven_beam_lambda_sweep_2026-06-08.md
+result/metrics/cycle14_seven_beam_lambda_sweep_2026-06-08.csv
+result/metrics/cycle14_seven_beam_lambda_sweep_extended_2026-06-08.csv
+result/figures/cycle14_seven_beam_lambda_sweep_2026-06-08.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -431,6 +440,19 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/logs/cycle13_seven_beam_physics_cnn_2026-06-08.md`
 
 当前判断：`lambda_phy=0.1` 可以带来小幅改善，但远场损失对总损失贡献偏小。下一步需要做 `lambda_phy` 权重消融，找到更适合 7 光束系统的物理约束强度。
+
+### Cycle 14
+
+已完成 7 光束物理损失权重消融。
+
+核心输出：
+
+- `train/sweep_seven_beam_lambda.py`
+- `result/logs/cycle14_seven_beam_lambda_sweep_2026-06-08.md`
+- `result/metrics/cycle14_seven_beam_lambda_sweep_2026-06-08.csv`
+- `result/metrics/cycle14_seven_beam_lambda_sweep_extended_2026-06-08.csv`
+
+当前判断：`lambda_phy=0.1` 是当前最合适的 7 光束主实验候选。下一步进入探测器噪声鲁棒性实验。
 
 ## 当前阶段性判断
 

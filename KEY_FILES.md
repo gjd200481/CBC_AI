@@ -303,6 +303,22 @@ L_total = L_phase + lambda_phy * L_farfield
   - Cycle 14 将基于该脚本进行 `lambda_phy` 权重消融。
   - 后续噪声、振幅失配和位置偏移实验也会调用该模型作为物理约束对照。
 
+### `train/sweep_seven_beam_lambda.py`
+
+- 地址：`D:\CBC_AI\train\sweep_seven_beam_lambda.py`
+- 作用：7 光束物理损失权重消融脚本。
+- 当前功能：
+  - 固定同一数据集、同一划分和同一初始化种子。
+  - 批量训练多个 `lambda_phy` 设置。
+  - 输出每个权重的训练历史、汇总指标、模型权重和结果图。
+  - 汇总整体 RMSE、MAE、远场重建 MSE 和逐通道 RMSE。
+- 当前结果：
+  - Cycle 14 已比较 `0, 0.01, 0.05, 0.1, 0.5, 1.0`。
+  - 12 epoch 快速消融中 `lambda_phy=0.1` 相位 RMSE 最低。
+  - 30 epoch 候选复训后，`lambda_phy=0.1` 仍优于 `lambda_phy=0.5`。
+- 后续用途：
+  - 若需要论文主实验更稳，可围绕 `0.05, 0.1, 0.2` 做更细长训练搜索。
+
 ### `train/evaluate_noise_robustness.py`
 
 - 地址：`D:\CBC_AI\train\evaluate_noise_robustness.py`

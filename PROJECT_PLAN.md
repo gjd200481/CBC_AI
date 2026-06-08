@@ -252,6 +252,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束物理损失权重消融结果。
 
+状态：已完成 7 光束 `lambda_phy` 权重消融。快速消融比较了 `0, 0.01, 0.05, 0.1, 0.5, 1.0`，12 epoch 下 `lambda_phy=0.1` 的相位 RMSE 最低，`lambda_phy=0.5` 的远场 MSE 最低。进一步将 `lambda_phy=0.5` 复训到 30 epoch 后，其 RMSE 为 `1.05027 rad`，不如 `lambda_phy=0.1` 的 `1.02269 rad`。当前暂定 `lambda_phy=0.1` 为 7 光束主实验候选。记录见 `result/logs/cycle14_seven_beam_lambda_sweep_2026-06-08.md`。
+
 ### Cycle 15：2026-07-02 至 2026-07-03
 
 - 进行 7 光束探测器噪声鲁棒性实验。
