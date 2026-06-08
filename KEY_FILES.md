@@ -71,11 +71,11 @@
   - 7 光束主线应新增独立公共模块，避免把双光束文件改得过于臃肿。
   - `generate_two_beam_dataset()` 已支持 `phase_min` 和 `phase_max`，默认完整覆盖 `[-pi, pi]`。
 
-### 后续待新增：7 光束公共仿真模块
+### `simulation/common/multi_beam_core.py`
 
-- 建议地址：`D:\CBC_AI\simulation\common\multi_beam_core.py`
+- 地址：`D:\CBC_AI\simulation\common\multi_beam_core.py`
 - 作用：作为 7 光束主系统的核心物理仿真文件。
-- 计划功能：
+- 主要功能：
   - 生成中心 + 外圈六边形 7 光束坐标。
   - 固定中心参考相位为 0。
   - 随机生成外圈 6 路相对相位。
@@ -83,6 +83,34 @@
   - 通过 FFT 得到远场光强。
   - 输出 12 维 `sin/cos` 标签。
   - 支持后续振幅失配、位置偏移和噪声扰动。
+- 当前用途：
+  - 作为后续 7 光束 CNN baseline、物理约束 CNN 和扰动鲁棒性实验的公共仿真底座。
+  - 统一 7 光束相位定义，避免后续训练、评估和物理损失之间标签含义不一致。
+  - 提供 `save_dataset()` 与配置字典，保证生成数据可追溯。
+
+### `simulation/static/generate_seven_beam_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_seven_beam_dataset.py`
+- 作用：生成 7 光束静态远场数据集，是下一阶段 7 光束普通 CNN baseline 的数据入口。
+- 输入参数：
+  - `--num-samples`：样本数。
+  - `--noise-sigma`：探测器高斯噪声标准差。
+  - `--num-points`：近场计算网格采样点数。
+  - `--window-size`：近场窗口物理尺寸，单位 m。
+  - `--waist`：高斯光束腰斑半径，单位 m。
+  - `--beam-distance`：中心光束到外圈光束的距离，单位 m。
+  - `--crop-size`：远场中心裁剪尺寸。
+  - `--phase-min`、`--phase-max`：外圈 6 路相位采样范围。
+  - `--seed`：随机种子。
+  - `--output-dir`：输出目录。
+  - `--prefix`：输出文件名前缀。
+- 输出文件：
+  - `images_<prefix>.npy`：7 光束远场光强图像。
+  - `labels_<prefix>.npy`：6 路相对相位的 12 维 `sin/cos` 标签。
+  - `phases_<prefix>.npy`：6 路原始相位，单位 rad。
+  - `config_<prefix>.json`：数据集参数配置。
+- 当前 smoke 记录：
+  - `D:\CBC_AI\result\logs\cycle11_seven_beam_smoke_2026-06-08.md`
 
 ### `simulation/static/generate_two_beam_dataset.py`
 

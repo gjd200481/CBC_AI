@@ -1,0 +1,12 @@
+metric,value
+images_shape,"(32, 160, 160)"
+labels_shape,"(32, 12)"
+phases_shape,"(32, 6)"
+image_min,8.9119559033e-25
+image_max,1.0
+image_mean,0.0010455627
+phase_min,-3.1378977299
+phase_max,3.1042106152
+max_label_error,0.0
+max_phase_decode_error,5.9604644775e-08
+centers_shape,"(7, 2)"

@@ -219,6 +219,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束基础仿真模块和 smoke 数据集。
 
+状态：已完成 `simulation/common/multi_beam_core.py` 和 `simulation/static/generate_seven_beam_dataset.py`。已生成 32 样本 7 光束 smoke 数据集，图像形状为 `(32, 160, 160)`，标签形状为 `(32, 12)`，相位形状为 `(32, 6)`。标签编码误差为 0，相位解码最大误差约为 `5.96e-08 rad`。记录见 `result/logs/cycle11_seven_beam_smoke_2026-06-08.md`。
+
 ### Cycle 12：2026-06-26 至 2026-06-27
 
 - 生成 7 光束论文主数据集。

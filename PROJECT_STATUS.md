@@ -111,11 +111,15 @@ result/metrics/cycle03_static_dataset_2026-06-07.csv
 
 ### 3.1 目标升级：7 光束多路相干合成
 
-当前项目目标已升级为 7 光束相干合成。后续需要实现：
+当前项目目标已升级为 7 光束相干合成。7 光束基础仿真模块已经完成，当前已具备以下能力：
 
 - 7 光束六边形阵列近场复振幅生成。
 - 7 光束远场 FFT 传播。
 - 6 个相对相位的 `sin/cos` 标签，共 12 维。
+- 7 光束 smoke 数据集生成和数值检查。
+
+后续需要继续实现：
+
 - 7 光束普通 CNN baseline。
 - 7 光束傅里叶光学物理一致性损失。
 - 7 光束噪声、振幅失配、位置偏移和混合扰动鲁棒性实验。
@@ -125,6 +129,20 @@ result/metrics/cycle03_static_dataset_2026-06-07.csv
 ```text
 beam_0: center, phase = 0
 beam_1 ... beam_6: outer ring, phase = phi_1 ... phi_6
+```
+
+当前已新增文件：
+
+```text
+simulation/common/multi_beam_core.py
+simulation/static/generate_seven_beam_dataset.py
+```
+
+Cycle 11 已生成 32 样本 smoke 数据集，图像形状为 `(32, 160, 160)`，标签形状为 `(32, 12)`，相位形状为 `(32, 6)`。记录文件：
+
+```text
+result/logs/cycle11_seven_beam_smoke_2026-06-08.md
+result/metrics/cycle11_seven_beam_smoke_2026-06-08.csv
 ```
 
 ### 4. 数据读取与相位指标模块
