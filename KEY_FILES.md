@@ -138,6 +138,18 @@
 - 当前输出目录：
   - `D:\CBC_AI\dataset\seven_beam\noise_robustness\`
 
+### `simulation/static/generate_seven_beam_complex_robustness_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_seven_beam_complex_robustness_dataset.py`
+- 作用：生成 7 光束振幅失配和位置偏移鲁棒性实验数据集。
+- 当前功能：
+  - 多个扰动等级共用同一组 6 路相位样本。
+  - 振幅失配：中心参考光束振幅固定为 1，外圈 6 路随机变化。
+  - 位置偏移：7 路光束中心在指定范围内随机偏移。
+  - 保存远场图像、标签、相位、振幅数组、偏移数组和配置文件。
+- 当前输出目录：
+  - `D:\CBC_AI\dataset\seven_beam\complex_robustness\`
+
 ### `simulation/static/generate_two_beam_dataset.py`
 
 - 地址：`D:\CBC_AI\simulation\static\generate_two_beam_dataset.py`
@@ -358,6 +370,19 @@ L_total = L_phase + lambda_phy * L_farfield
   - 干净数据上物理约束 CNN 略优。
   - `noise>=0.03` 时物理约束 CNN 的相位 RMSE 明显高于普通 CNN。
   - 后续需要噪声增强训练或更合理的去噪物理一致性目标。
+
+### `train/evaluate_seven_beam_complex_robustness.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_seven_beam_complex_robustness.py`
+- 作用：评估 7 光束普通 CNN 和物理约束 CNN 在振幅失配、位置偏移下的鲁棒性。
+- 当前功能：
+  - 加载 7 光束普通 CNN 和 `lambda_phy=0.1` 物理约束 CNN。
+  - 评估振幅失配等级 `0, 0.05, 0.1, 0.2, 0.3`。
+  - 评估位置偏移等级 `0, 10um, 20um, 50um, 100um`。
+  - 输出整体 RMSE、MAE、逐通道 RMSE、远场重建 MSE 和对比曲线。
+- 当前结论：
+  - 物理约束 CNN 在振幅失配和位置偏移下均保持小幅 RMSE 优势。
+  - 该结果与探测器噪声实验形成对照，说明物理约束更适合光束状态扰动泛化。
 
 ### `train/evaluate_noise_robustness.py`
 

@@ -182,6 +182,15 @@ result/metrics/cycle15_seven_beam_noise_robustness_improvement_2026-06-08.csv
 result/figures/cycle15_seven_beam_noise_robustness_2026-06-08.png
 ```
 
+Cycle 16 已完成 7 光束振幅失配与位置偏移鲁棒性实验。使用 256 个共享相位样本，振幅失配范围为 `0, 0.05, 0.1, 0.2, 0.3`，位置偏移范围为 `0, 10um, 20um, 50um, 100um`。结果显示：`lambda_phy=0.1` 物理约束 CNN 在复杂扰动下基本保持小幅优势，RMSE 相比普通 CNN 降低约 `0.99%` 到 `2.39%`。记录文件：
+
+```text
+result/logs/cycle16_seven_beam_complex_robustness_2026-06-08.md
+result/metrics/cycle16_seven_beam_complex_robustness_2026-06-08.csv
+result/metrics/cycle16_seven_beam_complex_robustness_improvement_2026-06-08.csv
+result/figures/cycle16_seven_beam_complex_robustness_2026-06-08.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -474,6 +483,18 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/logs/cycle15_seven_beam_noise_robustness_2026-06-08.md`
 
 当前判断：当前物理约束模型在干净数据上略有优势，但对探测器噪声更敏感。后续如要突出鲁棒性，应考虑噪声增强训练或去噪物理一致性目标。
+
+### Cycle 16
+
+已完成 7 光束振幅失配与位置偏移鲁棒性实验。
+
+核心输出：
+
+- `simulation/static/generate_seven_beam_complex_robustness_dataset.py`
+- `train/evaluate_seven_beam_complex_robustness.py`
+- `result/logs/cycle16_seven_beam_complex_robustness_2026-06-08.md`
+
+当前判断：物理约束对振幅失配和位置偏移这类光束状态扰动有小幅增益，但对探测器噪声不稳定。后续论文应区分“成像噪声”和“光束物理状态扰动”两类鲁棒性。
 
 ## 当前阶段性判断
 
