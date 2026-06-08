@@ -74,7 +74,7 @@ label = [sin(phi_1), cos(phi_1), ..., sin(phi_6), cos(phi_6)]
 - `simulation/static/`：静态远场图像数据生成脚本，是当前论文主路线的核心数据来源。
 - `simulation/dynamic/`：动态序列脚本，作为后续拓展备用，不作为当前论文主任务。
 - `train/`：训练脚本，包括 CNN baseline、物理约束 CNN、损失函数和评估流程。
-- `model/`：推理和评估 demo。
+- `examples/`：推理和评估 demo。
 - `models/`：保存模型权重。
 - `dataset/`：保存静态数据集和配置文件。
 - `result/metrics/`：保存相位 RMSE、重建远场误差、主瓣能量占比、Strehl 比等表格。

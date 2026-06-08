@@ -15,7 +15,7 @@ env/
 
 # Machine learning data and generated artifacts
 dataset/
-model/
+models/
 result/
 *.npy
 *.npz

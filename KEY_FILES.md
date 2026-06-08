@@ -31,6 +31,21 @@
 - 使用建议：
   - 新增重要脚本、数据集、实验结果或论文材料后，应同步补充说明。
 
+### `README.md`
+
+- 地址：`D:\CBC_AI\README.md`
+- 作用：项目总入口，说明研究目标、目录结构、快速复现实验命令和当前关键结果。
+- 使用建议：
+  - 新成员或重新打开项目时优先阅读。
+  - 当主实验路线、关键结果或目录结构发生变化时同步更新。
+
+### `NAMING_CONVENTIONS.md`
+
+- 地址：`D:\CBC_AI\NAMING_CONVENTIONS.md`
+- 作用：统一项目目录、源码、数据集、结果文件和模型权重命名规范。
+- 使用建议：
+  - 新增脚本、结果或数据集前先检查命名是否符合该规范。
+
 ### `.gitignore`
 
 - 地址：`D:\CBC_AI\.gitignore`
@@ -159,14 +174,14 @@
 - 后续用途：
   - 如果论文后续需要扩展“动态扰动预测”或“闭环控制”，可以重新启用。
 
-### `simulation/static/*.py` 其他脚本
+### `simulation/static/legacy/*.py` 早期脚本
 
-- 地址：`D:\CBC_AI\simulation\static\`
+- 地址：`D:\CBC_AI\simulation\static\legacy\`
 - 作用：早期仿真、验证和演示脚本。
 - 文件包括：
   - `gaussian_fft.py`：高斯光束 FFT 传播早期验证。
   - `two_beam_interference.py`：双光束干涉图样演示。
-  - `twobeam_gaussian.py`：双高斯光束近场/远场演示。
+  - `two_beam_gaussian.py`：双高斯光束近场/远场演示。
   - `day2_5_diffraction.py`：早期衍射仿真实验脚本。
 - 当前优先级：
   - 这些脚本主要用于理解和回溯，不作为主训练入口。
@@ -360,9 +375,9 @@ L_total = L_phase + lambda_phy * L_farfield
   - 振幅失配范围到 `0.3` 时，两类模型都较稳定。
   - 当前设置下普通 CNN 的 RMSE 低于物理约束 CNN。
 
-### `model/demo_evaluate_two_beam_model.py`
+### `examples/demo_evaluate_two_beam_model.py`
 
-- 地址：`D:\CBC_AI\model\demo_evaluate_two_beam_model.py`
+- 地址：`D:\CBC_AI\examples\demo_evaluate_two_beam_model.py`
 - 作用：加载已训练 CNN 模型并评估相位 RMSE。
 - 当前功能：
   - 从 `.pth` 模型文件读取网络权重。
@@ -377,9 +392,9 @@ L_total = L_phase + lambda_phy * L_farfield
   - 训练完成后快速复查模型性能。
   - 对比不同噪声数据集上的泛化误差。
 
-### `model/demo_two_beam_inference.py`
+### `examples/demo_two_beam_inference.py`
 
-- 地址：`D:\CBC_AI\model\demo_two_beam_inference.py`
+- 地址：`D:\CBC_AI\examples\demo_two_beam_inference.py`
 - 作用：单样本推理演示脚本。
 - 使用场景：
   - 展示模型如何从一张远场图像预测相位。
@@ -599,7 +614,7 @@ L_total = L_phase + lambda_phy * L_farfield
 3. 检查物理仿真逻辑：`simulation/common/two_beam_core.py`
 4. 查看主数据集记录：`result/logs/cycle03_static_dataset_2026-06-07.md`
 5. 进入下一步训练前，整理：`train/evaluate_two_beam.py`
-6. 评估模型时使用：`model/demo_evaluate_two_beam_model.py`
+6. 评估模型时使用：`examples/demo_evaluate_two_beam_model.py`
 7. 写论文背景时查：`paper/journals/chinese/README.md` 和 `paper/daedalus_packages/`
 
 ## 下一步建议

@@ -55,7 +55,7 @@ FFT 得到重建远场
 - `simulation/static/`：静态远场数据生成脚本。
 - `simulation/dynamic/`：动态序列数据生成脚本，当前为拓展备用。
 - `train/`：训练、数据读取、指标计算和物理损失模块。
-- `model/`：模型推理和评估 demo。
+- `examples/`：模型推理和评估 demo。
 - `dataset/`：本地生成数据集，不提交 Git。
 - `models/`：本地模型权重，不提交 Git。
 - `result/`：实验记录、指标表和结果图。
