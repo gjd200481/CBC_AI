@@ -240,6 +240,25 @@ L_total = L_phase + lambda_phy * L_farfield
 - 当前输出目录：
   - `dataset/two_beam/noise_robustness/`
 
+### `simulation/static/generate_two_beam_amplitude_mismatch_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_two_beam_amplitude_mismatch_dataset.py`
+- 作用：生成振幅失配鲁棒性实验专用数据集。
+- 设计特点：
+  - 第一束振幅固定为 `1.0`。
+  - 第二束振幅从 `[1-r, 1+r]` 随机采样。
+  - 多个失配等级共用同一组相位标签。
+- 当前输出目录：
+  - `dataset/two_beam/amplitude_mismatch/`
+
+### `train/evaluate_amplitude_mismatch.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_amplitude_mismatch.py`
+- 作用：评估普通 CNN 和物理约束 CNN 在不同振幅失配范围下的相位反演性能。
+- 当前结论：
+  - 振幅失配范围到 `0.3` 时，两类模型都较稳定。
+  - 当前设置下普通 CNN 的 RMSE 低于物理约束 CNN。
+
 ### `model/demo_evaluate_two_beam_model.py`
 
 - 地址：`D:\CBC_AI\model\demo_evaluate_two_beam_model.py`
@@ -394,6 +413,15 @@ L_total = L_phase + lambda_phy * L_farfield
 
 - 地址：`D:\CBC_AI\PROJECT_STATUS.md`
 - 作用：详细记录项目任务目标、研究路线、已完成工作、当前进度和下一步计划。
+
+### `result/logs/cycle10_amplitude_mismatch_2026-06-08.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle10_amplitude_mismatch_2026-06-08.md`
+- 作用：记录振幅失配鲁棒性实验。
+- 当前结论：
+  - 当前双光束设置下，振幅失配对相位反演影响较小。
+  - 普通 CNN 在该扰动下仍优于物理约束 CNN。
+  - 后续需要继续测试位置偏移和混合扰动。
 
 ### `result/metrics/baseline_cnn_main_clean_2026-06-07.csv`
 

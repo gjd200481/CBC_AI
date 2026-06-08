@@ -184,6 +184,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：振幅失配鲁棒性实验结果。
 
+状态：已完成振幅失配鲁棒性实验。当前设置下普通 CNN 和物理约束 CNN 都较稳定，但普通 CNN 的 RMSE 更低；物理约束优势未体现在该扰动类型上。记录见 `result/logs/cycle10_amplitude_mismatch_2026-06-08.md`。
+
 ### Cycle 11：2026-06-24 至 2026-06-25
 
 - 加入位置偏移扰动。

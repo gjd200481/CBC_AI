@@ -310,7 +310,29 @@ result/figures/cycle09_noise_robustness_2026-06-08.png
 
 ### Cycle 10
 
-加入振幅失配扰动，测试子光束能量不一致时的相位反演性能。
+已完成振幅失配扰动实验。
+
+测试设置：
+
+```text
+amplitude_1 = 1.0
+amplitude_2 ~ Uniform(1-r, 1+r)
+r = 0, 0.05, 0.1, 0.2, 0.3
+```
+
+实验结果：
+
+- 普通 CNN 在 `r=0.3` 时 RMSE 约 `0.004278 rad`。
+- 物理约束 CNN 在 `r=0.3` 时 RMSE 约 `0.004934 rad`。
+- 当前设置下两类模型都较稳定，但普通 CNN 更优。
+
+记录文件：
+
+```text
+result/logs/cycle10_amplitude_mismatch_2026-06-08.md
+result/metrics/cycle10_amplitude_mismatch_2026-06-08.csv
+result/figures/cycle10_amplitude_mismatch_2026-06-08.png
+```
 
 ### Cycle 11
 
