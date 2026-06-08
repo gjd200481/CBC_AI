@@ -262,6 +262,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束噪声鲁棒性结果。
 
+状态：已完成 7 光束探测器噪声鲁棒性实验。生成 512 个共享相位样本，测试 `noise=0, 0.01, 0.03, 0.05, 0.08`。当前 `lambda_phy=0.1` 物理约束 CNN 在干净数据上略优于普通 CNN，但在 `noise>=0.03` 时相位 RMSE 明显高于普通 CNN，说明当前干净训练的物理约束模型对探测器噪声较敏感。记录见 `result/logs/cycle15_seven_beam_noise_robustness_2026-06-08.md`。
+
 ### Cycle 16：2026-07-04 至 2026-07-05
 
 - 进行 7 光束振幅失配和位置偏移鲁棒性实验。

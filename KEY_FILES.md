@@ -127,6 +127,17 @@
 - 当前 smoke 记录：
   - `D:\CBC_AI\result\logs\cycle11_seven_beam_smoke_2026-06-08.md`
 
+### `simulation/static/generate_seven_beam_noise_robustness_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_seven_beam_noise_robustness_dataset.py`
+- 作用：生成 7 光束探测器噪声鲁棒性实验数据集。
+- 当前功能：
+  - 多个噪声等级共用同一组 6 路相位样本。
+  - 输出 7 光束远场图像、12 维 sin/cos 标签、原始相位和配置文件。
+  - 默认噪声等级为 `0, 0.01, 0.03, 0.05, 0.08`。
+- 当前输出目录：
+  - `D:\CBC_AI\dataset\seven_beam\noise_robustness\`
+
 ### `simulation/static/generate_two_beam_dataset.py`
 
 - 地址：`D:\CBC_AI\simulation\static\generate_two_beam_dataset.py`
@@ -333,6 +344,20 @@ L_total = L_phase + lambda_phy * L_farfield
   - 30 epoch 候选复训后，`lambda_phy=0.1` 仍优于 `lambda_phy=0.5`。
 - 后续用途：
   - 若需要论文主实验更稳，可围绕 `0.05, 0.1, 0.2` 做更细长训练搜索。
+
+### `train/evaluate_seven_beam_noise_robustness.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_seven_beam_noise_robustness.py`
+- 作用：评估 7 光束普通 CNN 和物理约束 CNN 在探测器噪声下的鲁棒性。
+- 当前功能：
+  - 加载 `baseline_cnn_main_clean_seven_beam_2026-06-08.pth`。
+  - 加载 `physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.pth`。
+  - 计算整体 RMSE、MAE、逐通道 RMSE 和远场重建 MSE。
+  - 输出噪声强度-误差曲线。
+- 当前结论：
+  - 干净数据上物理约束 CNN 略优。
+  - `noise>=0.03` 时物理约束 CNN 的相位 RMSE 明显高于普通 CNN。
+  - 后续需要噪声增强训练或更合理的去噪物理一致性目标。
 
 ### `train/evaluate_noise_robustness.py`
 

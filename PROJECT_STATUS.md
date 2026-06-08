@@ -173,6 +173,15 @@ result/metrics/cycle14_seven_beam_lambda_sweep_extended_2026-06-08.csv
 result/figures/cycle14_seven_beam_lambda_sweep_2026-06-08.png
 ```
 
+Cycle 15 已完成 7 光束探测器噪声鲁棒性实验。使用 512 个共享相位样本测试 `noise=0, 0.01, 0.03, 0.05, 0.08`。结果显示：`lambda_phy=0.1` 物理约束 CNN 在干净数据上略优于普通 CNN，但在 `noise>=0.03` 时相位 RMSE 明显更高，说明当前干净训练的物理约束模型对探测器噪声较敏感。记录文件：
+
+```text
+result/logs/cycle15_seven_beam_noise_robustness_2026-06-08.md
+result/metrics/cycle15_seven_beam_noise_robustness_2026-06-08.csv
+result/metrics/cycle15_seven_beam_noise_robustness_improvement_2026-06-08.csv
+result/figures/cycle15_seven_beam_noise_robustness_2026-06-08.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -453,6 +462,18 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/metrics/cycle14_seven_beam_lambda_sweep_extended_2026-06-08.csv`
 
 当前判断：`lambda_phy=0.1` 是当前最合适的 7 光束主实验候选。下一步进入探测器噪声鲁棒性实验。
+
+### Cycle 15
+
+已完成 7 光束探测器噪声鲁棒性实验。
+
+核心输出：
+
+- `simulation/static/generate_seven_beam_noise_robustness_dataset.py`
+- `train/evaluate_seven_beam_noise_robustness.py`
+- `result/logs/cycle15_seven_beam_noise_robustness_2026-06-08.md`
+
+当前判断：当前物理约束模型在干净数据上略有优势，但对探测器噪声更敏感。后续如要突出鲁棒性，应考虑噪声增强训练或去噪物理一致性目标。
 
 ## 当前阶段性判断
 
