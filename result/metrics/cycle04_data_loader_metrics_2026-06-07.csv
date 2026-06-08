@@ -1,0 +1,12 @@
+item,value
+dataset,main_clean_two_beam
+image_shape,"(2000, 160, 160)"
+label_shape,"(2000, 2)"
+train_split,1400
+val_split,300
+test_split,300
+self_check_rmse_rad,0.0
+smoke_train_epochs,1
+smoke_val_rmse_rad,1.707471
+smoke_test_rmse_rad,1.7587032318
+smoke_eval_all_samples_rmse_rad,1.7541974783

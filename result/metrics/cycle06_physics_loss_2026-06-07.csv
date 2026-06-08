@@ -1,0 +1,9 @@
+metric,value
+recon_shape,"(16, 160, 160)"
+mse_true_label,1.0808640024e-16
+max_abs_true_label,4.7683715820e-07
+backward_loss_true_label,1.0808640024e-16
+grad_norm_true_label,1.2469546229e-11
+perturbed_loss,9.2805896657e-07
+perturbed_grad_norm,6.9834600254e-06
+perturbed_grad_is_finite,True

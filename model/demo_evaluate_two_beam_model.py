@@ -1,73 +1,23 @@
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
 
 
-class TwoBeamDataset(Dataset):
-    """Load two-beam far-field images and sin/cos phase labels from .npy files."""
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-    def __init__(self, image_path, label_path):
-        self.images = np.load(image_path)
-        self.labels = np.load(label_path)
-        if len(self.images) != len(self.labels):
-            raise ValueError(
-                f"Images and labels have different lengths: "
-                f"{len(self.images)} vs {len(self.labels)}"
-            )
-        if self.images.shape[1:] != (160, 160):
-            raise ValueError(
-                f"Expected images with shape (num_samples, 160, 160), "
-                f"got {self.images.shape}"
-            )
-        if self.labels.shape[1:] != (2,):
-            raise ValueError(
-                f"Expected labels with shape (num_samples, 2) for "
-                f"[sin(phi), cos(phi)], got {self.labels.shape}"
-            )
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = torch.tensor(self.images[index], dtype=torch.float32).unsqueeze(0)
-        label = torch.tensor(self.labels[index], dtype=torch.float32)
-        return image, label
-
-
-class SimpleCNN(nn.Module):
-    """Same network structure as train/evaluate_two_beam.py."""
-
-    def __init__(self):
-        super().__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
-
-        self.regressor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(64 * 20 * 20, 128),
-            nn.ReLU(),
-            nn.Linear(128, 2),
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = self.regressor(x)
-        return x
+from train.data_utils import FarFieldPhaseDataset
+from train.models import SimplePhaseCNN
+from train.phase_metrics import (
+    decode_sin_cos,
+    phase_metrics_from_sin_cos,
+    wrap_phase_error,
+)
 
 
 def default_model_path(repo_root):
@@ -84,24 +34,16 @@ def default_model_path(repo_root):
 def load_model(model_path, device):
     checkpoint = torch.load(model_path, map_location=device)
 
-    model = SimpleCNN().to(device)
+    model = SimplePhaseCNN(image_size=160, output_dim=2).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
     return model
 
 
-def angle_error(pred_phi, true_phi):
-    """Wrap phase error into [-pi, pi] so boundary cases do not inflate RMSE."""
-    return np.arctan2(
-        np.sin(pred_phi - true_phi),
-        np.cos(pred_phi - true_phi),
-    )
-
-
 def evaluate(model, data_loader, device):
-    pred_phi = []
-    true_phi = []
+    pred_values = []
+    true_values = []
 
     with torch.no_grad():
         for images, labels in data_loader:
@@ -110,41 +52,38 @@ def evaluate(model, data_loader, device):
             preds = model(images).cpu().numpy()
             labels = labels.numpy()
 
-            pred_angle = np.arctan2(preds[:, 0], preds[:, 1])
-            true_angle = np.arctan2(labels[:, 0], labels[:, 1])
+            pred_values.append(preds)
+            true_values.append(labels)
 
-            pred_phi.extend(pred_angle)
-            true_phi.extend(true_angle)
+    pred_values = np.concatenate(pred_values, axis=0)
+    true_values = np.concatenate(true_values, axis=0)
+    pred_phi = decode_sin_cos(pred_values).reshape(-1)
+    true_phi = decode_sin_cos(true_values).reshape(-1)
+    errors = wrap_phase_error(pred_phi, true_phi).reshape(-1)
+    metrics = phase_metrics_from_sin_cos(pred_values, true_values)
 
-    pred_phi = np.array(pred_phi)
-    true_phi = np.array(true_phi)
-    errors = angle_error(pred_phi, true_phi)
-    rmse = np.sqrt(np.mean(errors**2))
-
-    return pred_phi, true_phi, errors, rmse
+    return pred_phi, true_phi, errors, metrics
 
 
 def main():
-    repo_root = Path(__file__).resolve().parents[1]
-
     parser = argparse.ArgumentParser(
         description="Load a trained two-beam CNN model and evaluate phase RMSE."
     )
     parser.add_argument(
         "--model-path",
-        default=default_model_path(repo_root),
+        default=default_model_path(REPO_ROOT),
         type=Path,
         help="Path to the trained .pth model file.",
     )
     parser.add_argument(
         "--image-path",
-        default=repo_root / "dataset" / "two_beam" / "images_noise_0.05.npy",
+        default=REPO_ROOT / "dataset" / "two_beam" / "images_noise_0.05.npy",
         type=Path,
         help="Path to evaluation images saved as .npy.",
     )
     parser.add_argument(
         "--label-path",
-        default=repo_root / "dataset" / "two_beam" / "labels_noise_0.05.npy",
+        default=REPO_ROOT / "dataset" / "two_beam" / "labels_noise_0.05.npy",
         type=Path,
         help="Path to evaluation labels saved as .npy.",
     )
@@ -176,22 +115,24 @@ def main():
     print("Images:", args.image_path)
     print("Labels:", args.label_path)
 
-    dataset = TwoBeamDataset(args.image_path, args.label_path)
-    data_loader = DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
+    dataset = FarFieldPhaseDataset(
+        args.image_path,
+        args.label_path,
+        expected_size=(160, 160),
     )
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
     model = load_model(args.model_path, device)
-    pred_phi, true_phi, errors, rmse = evaluate(model, data_loader, device)
+    pred_phi, true_phi, errors, metrics = evaluate(model, data_loader, device)
 
     print("\nEvaluation result:")
     print("Samples:", len(dataset))
-    print("RMSE(rad):", rmse)
-    print("RMSE(deg):", np.degrees(rmse))
-    print("Mean error(rad):", np.mean(errors))
-    print("Mean error(deg):", np.degrees(np.mean(errors)))
+    print("RMSE(rad):", metrics["rmse_rad"])
+    print("RMSE(deg):", metrics["rmse_deg"])
+    print("MAE(rad):", metrics["mae_rad"])
+    print("MAE(deg):", metrics["mae_deg"])
+    print("Mean error(rad):", metrics["mean_error_rad"])
+    print("Mean error(deg):", metrics["mean_error_deg"])
 
     if args.no_plot:
         return

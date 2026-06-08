@@ -131,20 +131,114 @@
 ### `train/evaluate_two_beam.py`
 
 - 地址：`D:\CBC_AI\train\evaluate_two_beam.py`
-- 作用：当前双光束 CNN baseline 训练脚本。
+- 作用：当前双光束 CNN baseline 训练入口。
 - 当前功能：
-  - 读取 `.npy` 远场图像和 `[sin(phi), cos(phi)]` 标签。
-  - 建立简单三层 CNN。
-  - 使用 MSE 损失训练相位标签。
-  - 输出预测相位和真实相位的 RMSE。
+  - 支持命令行传入图像、标签、模型保存路径、指标保存路径和训练超参数。
+  - 默认读取 Cycle 03 主静态数据集 `main_clean_two_beam`。
+  - 使用 `train.data_utils` 构建训练/验证/测试 DataLoader。
+  - 使用 `train.models.SimplePhaseCNN` 作为普通 CNN baseline。
+  - 使用 `train.phase_metrics` 计算周期相位 RMSE、MAE 和平均误差。
 - 当前默认数据：
-  - `dataset/two_beam/images_noise_0.05.npy`
-  - `dataset/two_beam/labels_noise_0.05.npy`
-- 后续需要改进：
-  - 增加命令行参数，避免路径写死。
-  - 增加训练/验证/测试固定划分。
-  - 输出训练曲线和指标 CSV。
-  - 拆出 `Dataset`、模型、相位误差函数，为 Cycle 04 和 Cycle 05 做准备。
+  - `dataset/two_beam/main_static/images_main_clean_two_beam.npy`
+  - `dataset/two_beam/main_static/labels_main_clean_two_beam.npy`
+- 后续用途：
+  - 已用于 Cycle 05 训练正式普通 CNN baseline。
+  - 后续物理约束 CNN 可复用其中的数据读取、训练循环和指标记录思路。
+
+### `train/data_utils.py`
+
+- 地址：`D:\CBC_AI\train\data_utils.py`
+- 作用：统一管理远场数据集读取和 DataLoader 构建。
+- 主要功能：
+  - `FarFieldPhaseDataset`：读取远场图像和 `[sin(phi), cos(phi)]` 标签。
+  - `split_dataset`：用固定随机种子划分训练集、验证集和测试集。
+  - `build_dataloaders`：返回训练、验证、测试三个 DataLoader 和划分信息。
+- 当前默认格式：
+  - 输入图像：`[N, H, W]`。
+  - 网络输入：`[batch, 1, H, W]`。
+  - 标签：`[N, 2 * num_phases]`。
+
+### `train/phase_metrics.py`
+
+- 地址：`D:\CBC_AI\train\phase_metrics.py`
+- 作用：统一管理相位解码和周期误差指标。
+- 主要功能：
+  - `decode_sin_cos`：将 `[sin(phi), cos(phi)]` 解码为相位。
+  - `wrap_phase_error`：将相位误差折回 `[-pi, pi]`。
+  - `phase_rmse_from_sin_cos`：根据 sin/cos 编码计算周期 RMSE。
+  - `phase_metrics_from_sin_cos`：输出 RMSE、MAE 和平均误差。
+- 当前用途：
+  - 普通 CNN 训练评估。
+  - 后续物理约束 CNN 训练评估。
+
+### `train/models.py`
+
+- 地址：`D:\CBC_AI\train\models.py`
+- 作用：统一保存训练阶段使用的神经网络结构。
+- 当前模型：
+  - `SimplePhaseCNN`：三层卷积 + 全连接回归头。
+  - 输入：单通道远场光强图。
+  - 输出：`[sin(phi), cos(phi)]`。
+  - 后续多束扩展时可调整 `output_dim`。
+
+### `train/physics_loss.py`
+
+- 地址：`D:\CBC_AI\train\physics_loss.py`
+- 作用：实现傅里叶光学物理一致性损失，是后续物理约束 CNN 的核心模块。
+- 主要功能：
+  - `TwoBeamFourierOptics`：torch 版双光束近场重建与 FFT 远场传播模型。
+  - `FarFieldConsistencyLoss`：计算预测相位重建远场与输入远场之间的 MSE 或 L1 损失。
+  - `crop_center_torch`：torch 版中心裁剪函数。
+  - `normalize_intensity`：按单张图最大值归一化远场光强。
+- 当前验证结果：
+  - 真实标签重建远场 MSE 约 `1.08e-16`。
+  - 最大像素误差约 `4.77e-7`。
+  - 扰动预测下物理损失可反向传播，梯度有限。
+- 后续用途：
+  - Cycle 07 中与相位监督损失组合：
+
+```text
+L_total = L_phase + lambda_phy * L_farfield
+```
+
+### `train/train_physics_constrained_cnn.py`
+
+- 地址：`D:\CBC_AI\train\train_physics_constrained_cnn.py`
+- 作用：训练第一版物理约束 CNN。
+- 当前功能：
+  - 读取远场图像和 `sin/cos` 相位标签。
+  - 使用 `SimplePhaseCNN` 预测相位编码。
+  - 使用 `MSELoss` 计算相位监督损失。
+  - 使用 `FarFieldConsistencyLoss` 计算远场物理一致性损失。
+  - 按 `L_total = L_phase + lambda_phy * L_farfield` 训练模型。
+  - 保存训练指标、测试摘要、模型权重和结果图。
+- 当前实验：
+  - `lambda_phy = 0.1`
+  - 10 epoch
+  - 测试集 RMSE 为 `0.005782 rad`，约 `0.331 deg`
+  - 远场重建 MSE 为 `9.35e-9`
+
+### `train/evaluate_noise_robustness.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_noise_robustness.py`
+- 作用：评估普通 CNN 和物理约束 CNN 在不同探测器噪声强度下的相位反演性能。
+- 当前功能：
+  - 加载 `baseline_cnn_main_clean.pth`。
+  - 加载 `sweep_lambda_0.01_main_clean.pth` 作为物理约束 CNN 候选。
+  - 对多个 `noise_sigma` 数据集计算 RMSE、MAE、平均误差和远场 MSE。
+  - 输出噪声强度-误差曲线。
+- 当前结论：
+  - 在 `noise=0.01, 0.03, 0.05` 下，物理约束 CNN 相比普通 CNN 有更低 RMSE。
+
+### `simulation/static/generate_two_beam_noise_robustness_dataset.py`
+
+- 地址：`D:\CBC_AI\simulation\static\generate_two_beam_noise_robustness_dataset.py`
+- 作用：生成噪声鲁棒性实验专用数据集。
+- 设计特点：
+  - 多个噪声强度共用同一组相位标签。
+  - 只改变探测器噪声强度，保证噪声曲线对比公平。
+- 当前输出目录：
+  - `dataset/two_beam/noise_robustness/`
 
 ### `model/demo_evaluate_two_beam_model.py`
 
@@ -155,6 +249,10 @@
   - 读取评估数据集。
   - 将网络输出 `[sin(phi), cos(phi)]` 解码为相位。
   - 计算周期相位误差和 RMSE。
+- 当前实现：
+  - 已复用 `train.data_utils.FarFieldPhaseDataset`。
+  - 已复用 `train.models.SimplePhaseCNN`。
+  - 已复用 `train.phase_metrics`。
 - 使用场景：
   - 训练完成后快速复查模型性能。
   - 对比不同噪声数据集上的泛化误差。
@@ -229,6 +327,88 @@
   - 相位范围。
   - 图像均值和标准差。
   - 标签与真实相位 sin/cos 的最大误差。
+
+### `result/logs/cycle05_baseline_cnn_2026-06-07.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle05_baseline_cnn_2026-06-07.md`
+- 作用：记录普通 CNN baseline 的正式训练过程和测试结果。
+- 当前结论：
+  - 在无噪声双光束主数据集上，测试集 RMSE 为 `0.003742 rad`，约 `0.214 deg`。
+  - 后续物理约束 CNN 的重点应放在鲁棒性、远场重建一致性和物理指标上。
+
+### `result/logs/cycle06_physics_loss_2026-06-07.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle06_physics_loss_2026-06-07.md`
+- 作用：记录傅里叶光学物理一致性损失模块的实现和验证过程。
+- 当前结论：
+  - torch 版 FFT 传播与 NumPy 数据生成口径一致。
+  - 物理一致性损失可以反向传播。
+  - 可进入 Cycle 07 的物理约束 CNN 训练。
+
+### `result/logs/cycle07_physics_constrained_cnn_2026-06-07.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle07_physics_constrained_cnn_2026-06-07.md`
+- 作用：记录第一版物理约束 CNN 的训练过程和测试结果。
+- 当前结论：
+  - 物理约束训练流程已经完整跑通。
+  - `lambda_phy=0.1` 下，测试集 RMSE 为 `0.005782 rad`，约 `0.331 deg`。
+  - 远场重建 MSE 为 `9.35e-9`。
+  - 后续需要在 Cycle 08 做 `lambda_phy` 权重消融。
+
+### `result/logs/cycle08_lambda_sweep_2026-06-07.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle08_lambda_sweep_2026-06-07.md`
+- 作用：记录物理损失权重 `lambda_phy` 的消融实验。
+- 测试权重：
+  - `0`
+  - `0.01`
+  - `0.05`
+  - `0.1`
+  - `0.5`
+  - `1.0`
+- 当前结论：
+  - 在干净双光束数据集、8 epoch 设置下，`lambda_phy=0.01` 最优。
+  - 其测试集 RMSE 为 `0.004291 rad`，约 `0.24585 deg`。
+  - 远场重建 MSE 为 `4.82e-9`。
+  - 下一阶段噪声鲁棒性实验建议优先使用 `lambda_phy=0.01`。
+
+### `result/metrics/cycle08_lambda_sweep_2026-06-07.csv`
+
+- 地址：`D:\CBC_AI\result\metrics\cycle08_lambda_sweep_2026-06-07.csv`
+- 作用：保存 `lambda_phy` 消融实验汇总指标。
+
+### `result/figures/cycle08_lambda_sweep_2026-06-07.png`
+
+- 地址：`D:\CBC_AI\result\figures\cycle08_lambda_sweep_2026-06-07.png`
+- 作用：保存 `lambda_phy` 与相位 RMSE、远场 MSE、相位监督损失之间的关系图。
+
+### `result/logs/cycle09_noise_robustness_2026-06-08.md`
+
+- 地址：`D:\CBC_AI\result\logs\cycle09_noise_robustness_2026-06-08.md`
+- 作用：记录探测器噪声鲁棒性实验。
+- 当前结论：
+  - 在中等噪声 `0.01, 0.03, 0.05` 下，`lambda_phy=0.01` 物理约束 CNN 相比普通 CNN 的 RMSE 降低约 `10.60%` 到 `15.99%`。
+  - 在高噪声 `0.08` 下，物理约束 CNN 略差，说明当前方法存在噪声适用边界。
+
+### `PROJECT_STATUS.md`
+
+- 地址：`D:\CBC_AI\PROJECT_STATUS.md`
+- 作用：详细记录项目任务目标、研究路线、已完成工作、当前进度和下一步计划。
+
+### `result/metrics/baseline_cnn_main_clean_2026-06-07.csv`
+
+- 地址：`D:\CBC_AI\result\metrics\baseline_cnn_main_clean_2026-06-07.csv`
+- 作用：保存普通 CNN baseline 每个 epoch 的训练损失、验证损失和验证相位误差。
+
+### `result/metrics/baseline_cnn_main_clean_summary_2026-06-07.csv`
+
+- 地址：`D:\CBC_AI\result\metrics\baseline_cnn_main_clean_summary_2026-06-07.csv`
+- 作用：保存普通 CNN baseline 最终测试集指标。
+
+### `result/figures/baseline_cnn_main_clean_2026-06-07.png`
+
+- 地址：`D:\CBC_AI\result\figures\baseline_cnn_main_clean_2026-06-07.png`
+- 作用：保存普通 CNN baseline 的训练曲线、预测-真实相位散点图和误差分布图。
 
 ## 文献目录
 

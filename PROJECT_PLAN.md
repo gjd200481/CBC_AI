@@ -108,6 +108,8 @@ FFT 重建远场光强
 
 目标输出：可稳定复用的数据读取与相位误差计算模块。
 
+状态：已完成 `train/data_utils.py`、`train/phase_metrics.py` 和 `train/models.py`，并将训练脚本与评估 demo 改为复用统一模块。主数据集固定划分为 `1400/300/300`，Cycle 04 记录见 `result/logs/cycle04_data_loader_metrics_2026-06-07.md`。
+
 ### Cycle 05：2026-06-12 至 2026-06-13
 
 - 训练普通 CNN baseline。
@@ -116,6 +118,8 @@ FFT 重建远场光强
 - 保存典型远场输入图与预测相位结果。
 
 目标输出：`baseline_cnn_supervised` 实验记录。
+
+状态：已完成普通 CNN baseline 正式训练。无噪声双光束主数据集测试集 RMSE 为 `0.003742 rad`，约 `0.214 deg`。实验记录见 `result/logs/cycle05_baseline_cnn_2026-06-07.md`，训练指标见 `result/metrics/baseline_cnn_main_clean_2026-06-07.csv`。
 
 ### Cycle 06：2026-06-14 至 2026-06-15
 
@@ -126,6 +130,8 @@ FFT 重建远场光强
 - 实现远场重建误差损失。
 
 目标输出：可反向传播的 FFT 物理一致性损失函数。
+
+状态：已完成 `train/physics_loss.py`。真实标签重建远场 MSE 约 `1.08e-16`，最大像素误差约 `4.77e-7`；扰动预测下物理损失可反向传播且梯度有限。记录见 `result/logs/cycle06_physics_loss_2026-06-07.md`。
 
 ### Cycle 07：2026-06-16 至 2026-06-17
 
@@ -141,6 +147,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：第一版 `physics_constrained_cnn` 结果。
 
+状态：已完成第一版 `physics_constrained_cnn` 训练，`lambda_phy=0.1`，10 epoch。测试集 RMSE 为 `0.005782 rad`，约 `0.331 deg`，远场重建 MSE 为 `9.35e-9`。记录见 `result/logs/cycle07_physics_constrained_cnn_2026-06-07.md`。
+
 ### Cycle 08：2026-06-18 至 2026-06-19
 
 - 完成物理约束权重消融实验。
@@ -149,6 +157,8 @@ L_total = L_phase + lambda_phy * L_farfield
 - 选择论文主实验使用的物理损失权重。
 
 目标输出：物理损失权重消融表和曲线。
+
+状态：已完成 `lambda_phy = 0, 0.01, 0.05, 0.1, 0.5, 1.0` 的 8 epoch 消融实验。当前干净数据集上 `lambda_phy=0.01` 最优，测试 RMSE 为 `0.004291 rad`，远场重建 MSE 为 `4.82e-9`。记录见 `result/logs/cycle08_lambda_sweep_2026-06-07.md`。
 
 ### Cycle 09：2026-06-20 至 2026-06-21
 
@@ -162,6 +172,8 @@ L_total = L_phase + lambda_phy * L_farfield
 - 对比普通 CNN 与物理约束 CNN 在噪声下的性能下降趋势。
 
 目标输出：噪声强度-相位误差曲线。
+
+状态：已完成探测器噪声鲁棒性实验。物理约束 CNN 在 `noise=0.01, 0.03, 0.05` 下相对普通 CNN 的相位 RMSE 降低约 `10.60%` 到 `15.99%`，但在 `noise=0.08` 下略差。记录见 `result/logs/cycle09_noise_robustness_2026-06-08.md`。
 
 ### Cycle 10：2026-06-22 至 2026-06-23
 

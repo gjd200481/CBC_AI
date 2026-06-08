@@ -1,229 +1,295 @@
+import argparse
+import csv
+import sys
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, random_split
 
 
-# =====================================
-# Dataset
-# =====================================
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from train.data_utils import build_dataloaders
+from train.models import SimplePhaseCNN
+from train.phase_metrics import decode_sin_cos, phase_metrics_from_sin_cos, wrap_phase_error
 
 
-class Dataset2Beam(Dataset):
-    def __init__(self, image_path, label_path):
-        # 从 .npy 文件读取远场光强图像和相位标签。
-        # images 保存双光束干涉图，labels 保存 [sin(phi), cos(phi)]。
-        self.images = np.load(image_path)
-        self.labels = np.load(label_path)
-        if len(self.images) != len(self.labels):
-            raise ValueError(
-                f"Images and labels have different lengths: "
-                f"{len(self.images)} vs {len(self.labels)}"
-            )
-        if self.images.shape[1:] != (160, 160):
-            raise ValueError(
-                f"Expected images with shape (num_samples, 160, 160), "
-                f"got {self.images.shape}"
-            )
-        if self.labels.shape[1:] != (2,):
-            raise ValueError(
-                f"Expected labels with shape (num_samples, 2) for "
-                f"[sin(phi), cos(phi)], got {self.labels.shape}"
-            )
+def evaluate_model(model, data_loader, device):
+    """在一个 DataLoader 上计算平均监督损失和周期相位误差指标。"""
+    criterion = nn.MSELoss()
+    model.eval()
 
-    def __len__(self):
-        return len(self.images)
+    total_loss = 0.0
+    total_samples = 0
+    pred_values = []
+    true_values = []
 
-    def __getitem__(self, idx):
-        # Conv2d 输入格式为 [C, H, W]，因此给灰度图增加通道维度 C=1。
-        image = torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32)
-        return image, label
+    with torch.no_grad():
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
 
+            preds = model(images)
+            loss = criterion(preds, labels)
 
-# =====================================
-# CNN
-# =====================================
+            batch_size = len(images)
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
+            pred_values.append(preds.cpu().numpy())
+            true_values.append(labels.cpu().numpy())
+
+    pred_values = np.concatenate(pred_values, axis=0)
+    true_values = np.concatenate(true_values, axis=0)
+    metrics = phase_metrics_from_sin_cos(pred_values, true_values)
+    metrics["loss"] = total_loss / max(total_samples, 1)
+    return metrics, pred_values, true_values
 
 
-class CNN(nn.Module):
-    def __init__(self):
-        super().__init__()
+def train_one_epoch(model, data_loader, optimizer, criterion, device):
+    """训练一个 epoch，返回样本加权后的平均损失。"""
+    model.train()
+    total_loss = 0.0
+    total_samples = 0
 
-        # 三层卷积提取远场光斑特征；每次池化后图像尺寸减半。
-        self.features = nn.Sequential(
-            nn.Conv2d(1, 16, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
-
-        # 输入 160x160，三次 2x2 池化后为 20x20，输出 [sin(phi), cos(phi)]。
-        self.regressor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(64 * 20 * 20, 128),
-            nn.ReLU(),
-            nn.Linear(128, 2),
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = self.regressor(x)
-        return x
-
-
-# =====================================
-# load
-# =====================================
-
-
-image_path = "dataset/two_beam/images_noise_0.05.npy"
-label_path = "dataset/two_beam/labels_noise_0.05.npy"
-model_dir = "models"
-model_path = os.path.join(model_dir, "two_beam_cnn__noise_0.05.pth")
-
-os.makedirs(model_dir, exist_ok=True)
-
-dataset = Dataset2Beam(image_path, label_path)
-
-# 将数据集按 80% / 20% 划分为训练集和测试集。
-train_size = int(0.8 * len(dataset))
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-
-train_loader = DataLoader(
-    train_dataset,
-    batch_size=32,
-    shuffle=True,
-)
-
-test_loader = DataLoader(
-    test_dataset,
-    batch_size=32,
-    shuffle=False,
-)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-model = CNN().to(device)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=1e-3,
-)
-
-
-# =====================================
-# train
-# =====================================
-
-
-losses = []
-
-for epoch in range(20):
-    total_loss = 0
-
-    for images, labels in train_loader:
+    for images, labels in data_loader:
         images = images.to(device)
         labels = labels.to(device)
 
-        pred = model(images)
-        loss = criterion(pred, labels)
+        preds = model(images)
+        loss = criterion(preds, labels)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        batch_size = len(images)
+        total_loss += loss.item() * batch_size
+        total_samples += batch_size
 
-    losses.append(total_loss)
-
-
-# =====================================
-# save model
-# =====================================
+    return total_loss / max(total_samples, 1)
 
 
-torch.save(
-    {
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "num_epochs": 20,
-        "losses": losses,
-        "image_path": image_path,
-        "label_path": label_path,
-        "model_class": "CNN",
-        "output_format": "[sin(phi), cos(phi)]",
-    },
-    model_path,
-)
+def save_metrics_csv(history, output_path):
+    """保存每个 epoch 的训练/验证指标。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-print(f"Model saved to: {model_path}")
+    fieldnames = [
+        "epoch",
+        "train_loss",
+        "val_loss",
+        "val_rmse_rad",
+        "val_rmse_deg",
+        "val_mae_rad",
+        "val_mae_deg",
+    ]
 
-
-# =====================================
-# evaluate
-# =====================================
-
-
-model.eval()
-
-pred_phi = []
-true_phi = []
-
-with torch.no_grad():
-    for images, labels in test_loader:
-        images = images.to(device)
-
-        pred = model(images).cpu().numpy()
-        labels = labels.numpy()
-
-        pred_angle = np.arctan2(pred[:, 0], pred[:, 1])
-        true_angle = np.arctan2(labels[:, 0], labels[:, 1])
-
-        pred_phi.extend(pred_angle)
-        true_phi.extend(true_angle)
-
-pred_phi = np.array(pred_phi)
-true_phi = np.array(true_phi)
-
-# 相位是周期变量，需要把误差折回 [-pi, pi]，避免 pi 边界附近出现虚假大误差。
-error = np.arctan2(
-    np.sin(pred_phi - true_phi),
-    np.cos(pred_phi - true_phi),
-)
-rmse = np.sqrt(np.mean(error**2))
-
-print("RMSE=", rmse)
+    with output_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(history)
 
 
-# =====================================
-# plot
-# =====================================
+def save_summary_csv(test_metrics, output_path):
+    """保存最终测试集指标。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["metric", "value"])
+        for key, value in test_metrics.items():
+            writer.writerow([key, value])
 
 
-plt.figure(figsize=(12, 4))
+def plot_training(history, true_values, pred_values, figure_path=None, show=True):
+    """显示或保存训练曲线和测试集相位预测效果。"""
+    epochs = [item["epoch"] for item in history]
+    train_loss = [item["train_loss"] for item in history]
+    val_loss = [item["val_loss"] for item in history]
 
-plt.subplot(131)
-plt.plot(losses)
-plt.title("Loss")
+    true_phi = decode_sin_cos(true_values).reshape(-1)
+    pred_phi = decode_sin_cos(pred_values).reshape(-1)
+    errors = wrap_phase_error(pred_phi, true_phi)
 
-plt.subplot(132)
-plt.scatter(true_phi, pred_phi, s=5)
-plt.xlabel("True")
-plt.ylabel("Pred")
-plt.title("Pred vs True")
+    plt.figure(figsize=(12, 4))
 
-plt.subplot(133)
-plt.hist(error, bins=30)
-plt.title("Error distribution")
+    plt.subplot(1, 3, 1)
+    plt.plot(epochs, train_loss, label="train")
+    plt.plot(epochs, val_loss, label="val")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.title("Loss")
+    plt.legend()
 
-plt.tight_layout()
-plt.show()
+    plt.subplot(1, 3, 2)
+    plt.scatter(true_phi, pred_phi, s=5)
+    plt.xlabel("True phi")
+    plt.ylabel("Pred phi")
+    plt.title("Pred vs True")
+
+    plt.subplot(1, 3, 3)
+    plt.hist(errors, bins=30)
+    plt.xlabel("Error(rad)")
+    plt.title("Error distribution")
+
+    plt.tight_layout()
+    if figure_path is not None:
+        figure_path = Path(figure_path)
+        figure_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(figure_path, dpi=200)
+        print("Figure saved to:", figure_path)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Train a supervised CNN baseline for two-beam phase inversion."
+    )
+    parser.add_argument(
+        "--image-path",
+        type=Path,
+        default=REPO_ROOT / "dataset" / "two_beam" / "main_static" / "images_main_clean_two_beam.npy",
+    )
+    parser.add_argument(
+        "--label-path",
+        type=Path,
+        default=REPO_ROOT / "dataset" / "two_beam" / "main_static" / "labels_main_clean_two_beam.npy",
+    )
+    parser.add_argument(
+        "--model-path",
+        type=Path,
+        default=REPO_ROOT / "models" / "two_beam_cnn_main_clean.pth",
+    )
+    parser.add_argument(
+        "--metrics-path",
+        type=Path,
+        default=REPO_ROOT / "result" / "metrics" / "baseline_cnn_main_clean.csv",
+    )
+    parser.add_argument(
+        "--summary-path",
+        type=Path,
+        default=REPO_ROOT / "result" / "metrics" / "baseline_cnn_main_clean_summary.csv",
+    )
+    parser.add_argument(
+        "--figure-path",
+        type=Path,
+        default=REPO_ROOT / "result" / "figures" / "baseline_cnn_main_clean.png",
+    )
+    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--train-ratio", type=float, default=0.7)
+    parser.add_argument("--val-ratio", type=float, default=0.15)
+    parser.add_argument("--seed", type=int, default=20260608)
+    parser.add_argument("--image-size", type=int, default=160)
+    parser.add_argument("--no-plot", action="store_true")
+    args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    loaders = build_dataloaders(
+        image_path=args.image_path,
+        label_path=args.label_path,
+        batch_size=args.batch_size,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        seed=args.seed,
+        expected_size=(args.image_size, args.image_size),
+    )
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = SimplePhaseCNN(
+        image_size=args.image_size,
+        output_dim=loaders["dataset"].labels.shape[1],
+    ).to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+
+    print("Using device:", device)
+    print("Images:", args.image_path)
+    print("Labels:", args.label_path)
+    print("Splits:", loaders["splits"])
+    print("Model output dim:", loaders["dataset"].labels.shape[1])
+
+    history = []
+    for epoch in range(1, args.epochs + 1):
+        train_loss = train_one_epoch(
+            model=model,
+            data_loader=loaders["train"],
+            optimizer=optimizer,
+            criterion=criterion,
+            device=device,
+        )
+        val_metrics, _, _ = evaluate_model(model, loaders["val"], device)
+
+        row = {
+            "epoch": epoch,
+            "train_loss": train_loss,
+            "val_loss": val_metrics["loss"],
+            "val_rmse_rad": val_metrics["rmse_rad"],
+            "val_rmse_deg": val_metrics["rmse_deg"],
+            "val_mae_rad": val_metrics["mae_rad"],
+            "val_mae_deg": val_metrics["mae_deg"],
+        }
+        history.append(row)
+
+        print(
+            f"Epoch {epoch:03d} | "
+            f"train_loss={train_loss:.6f} | "
+            f"val_loss={val_metrics['loss']:.6f} | "
+            f"val_rmse={val_metrics['rmse_rad']:.6f} rad"
+        )
+
+    test_metrics, pred_values, true_values = evaluate_model(model, loaders["test"], device)
+
+    args.model_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "num_epochs": args.epochs,
+            "history": history,
+            "test_metrics": test_metrics,
+            "image_path": str(args.image_path),
+            "label_path": str(args.label_path),
+            "splits": loaders["splits"],
+            "seed": args.seed,
+            "model_class": "SimplePhaseCNN",
+            "output_format": "[sin(phi), cos(phi)]",
+        },
+        args.model_path,
+    )
+    save_metrics_csv(history, args.metrics_path)
+    save_summary_csv(test_metrics, args.summary_path)
+
+    print("\nTest result:")
+    print("RMSE(rad):", test_metrics["rmse_rad"])
+    print("RMSE(deg):", test_metrics["rmse_deg"])
+    print("MAE(rad):", test_metrics["mae_rad"])
+    print("MAE(deg):", test_metrics["mae_deg"])
+    print("Model saved to:", args.model_path)
+    print("Metrics saved to:", args.metrics_path)
+    print("Summary saved to:", args.summary_path)
+
+    plot_training(
+        history=history,
+        true_values=true_values,
+        pred_values=pred_values,
+        figure_path=args.figure_path,
+        show=not args.no_plot,
+    )
+
+
+if __name__ == "__main__":
+    main()
