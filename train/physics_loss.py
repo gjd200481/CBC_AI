@@ -132,11 +132,103 @@ class TwoBeamFourierOptics(nn.Module):
         return self.reconstruct_from_sin_cos(sin_cos_values)
 
 
+class SevenBeamFourierOptics(nn.Module):
+    """7 光束傅里叶光学可微分前向模型。
+
+    相位定义与 simulation/common/multi_beam_core.py 保持一致：
+    - beam_0 位于中心，相位固定为 0。
+    - beam_1 ... beam_6 位于外圈六边形，网络预测 6 路相对相位。
+    - 输入标签格式为 [sin(phi_1), cos(phi_1), ..., sin(phi_6), cos(phi_6)]。
+    """
+
+    def __init__(
+        self,
+        num_points=256,
+        window_size=10e-3,
+        waist=0.5e-3,
+        beam_distance=1.5e-3,
+        crop_size=160,
+        eps=1e-12,
+        dtype=torch.float32,
+    ):
+        super().__init__()
+        self.num_points = num_points
+        self.window_size = window_size
+        self.waist = waist
+        self.beam_distance = beam_distance
+        self.crop_size = crop_size
+        self.eps = eps
+
+        x = torch.linspace(-window_size / 2, window_size / 2, num_points, dtype=dtype)
+        x_grid, y_grid = torch.meshgrid(x, x, indexing="xy")
+        centers = self._seven_beam_centers(beam_distance=beam_distance, dtype=dtype)
+
+        envelopes = []
+        for center_x, center_y in centers:
+            envelopes.append(
+                self._gaussian_envelope(
+                    x_grid=x_grid,
+                    y_grid=y_grid,
+                    center_x=center_x,
+                    center_y=center_y,
+                    waist=waist,
+                )
+            )
+
+        self.register_buffer("envelopes", torch.stack(envelopes, dim=0))
+
+    @staticmethod
+    def _seven_beam_centers(beam_distance, dtype=torch.float32):
+        centers = [(0.0, 0.0)]
+        for index in range(6):
+            angle = torch.tensor(index * torch.pi / 3, dtype=dtype)
+            centers.append(
+                (
+                    beam_distance * torch.cos(angle),
+                    beam_distance * torch.sin(angle),
+                )
+            )
+        return torch.tensor(centers, dtype=dtype)
+
+    @staticmethod
+    def _gaussian_envelope(x_grid, y_grid, center_x, center_y, waist):
+        return torch.exp(-((x_grid - center_x) ** 2 + (y_grid - center_y) ** 2) / waist**2)
+
+    def reconstruct_from_phase(self, phases):
+        """根据 6 路相对相位重建裁剪后的归一化远场光强。"""
+        if phases.ndim != 2 or phases.shape[-1] != 6:
+            raise ValueError(f"Expected phases with shape [B, 6], got {phases.shape}")
+
+        batch_size = phases.shape[0]
+        reference = torch.zeros((batch_size, 1), device=phases.device, dtype=phases.dtype)
+        all_phases = torch.cat([reference, phases], dim=1)
+
+        envelopes = self.envelopes.to(device=phases.device, dtype=phases.dtype)
+        envelopes = envelopes.unsqueeze(0).expand(batch_size, -1, -1, -1)
+        phase_maps = all_phases[:, :, None, None].expand_as(envelopes)
+
+        beams = torch.polar(envelopes, phase_maps)
+        near_field = beams.sum(dim=1)
+
+        far_field = torch.fft.fftshift(torch.fft.fft2(near_field), dim=(-2, -1))
+        intensity = torch.abs(far_field) ** 2
+        intensity = normalize_intensity(intensity, eps=self.eps)
+        return crop_center_torch(intensity, self.crop_size).to(dtype=torch.float32)
+
+    def reconstruct_from_sin_cos(self, sin_cos_values):
+        """根据 12 维 sin/cos 编码重建裁剪后的归一化远场光强。"""
+        phases = decode_sin_cos(sin_cos_values)
+        return self.reconstruct_from_phase(phases)
+
+    def forward(self, sin_cos_values):
+        return self.reconstruct_from_sin_cos(sin_cos_values)
+
+
 class FarFieldConsistencyLoss(nn.Module):
     """远场物理一致性损失。
 
     输入：
-    - pred_sin_cos: 网络预测的 [sin(phi), cos(phi)]。
+    - pred_sin_cos: 网络预测的相位 sin/cos 编码。
     - target_images: 输入远场光强图，形状 [B, 1, H, W] 或 [B, H, W]。
 
     输出：

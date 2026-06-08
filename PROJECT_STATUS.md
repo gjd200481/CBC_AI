@@ -154,6 +154,16 @@ result/metrics/baseline_cnn_main_clean_seven_beam_summary_2026-06-08.csv
 result/figures/baseline_cnn_main_clean_seven_beam_2026-06-08.png
 ```
 
+Cycle 13 已完成首版 7 光束物理约束 CNN。新增 `SevenBeamFourierOptics`，真实标签重建远场 MSE 约为 `1.20e-16`。在 `lambda_phy=0.1`、30 轮训练下，物理约束 CNN 测试集 RMSE 为 `1.02269 rad`，略低于普通 CNN 的 `1.02698 rad`；远场重建 MSE 从普通 CNN 的 `1.1935e-4` 降至 `1.1501e-4`。记录文件：
+
+```text
+result/logs/cycle13_seven_beam_physics_cnn_2026-06-08.md
+result/metrics/physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.csv
+result/metrics/physics_cnn_lambda_0.1_main_clean_seven_beam_summary_2026-06-08.csv
+result/metrics/cycle13_seven_beam_physics_vs_baseline_2026-06-08.csv
+result/figures/physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -409,6 +419,18 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/metrics/baseline_cnn_main_clean_seven_beam_summary_2026-06-08.csv`
 
 下一步进入 7 光束物理约束 CNN：将 `train/physics_loss.py` 从双光束扩展到 7 光束，根据 6 路预测相位重建 7 光束近场，并把重建远场与输入远场的误差加入总损失。
+
+### Cycle 13
+
+已完成 7 光束物理约束 CNN。
+
+核心输出：
+
+- `train/physics_loss.py` 中的 `SevenBeamFourierOptics`
+- `train/train_seven_beam_physics_constrained_cnn.py`
+- `result/logs/cycle13_seven_beam_physics_cnn_2026-06-08.md`
+
+当前判断：`lambda_phy=0.1` 可以带来小幅改善，但远场损失对总损失贡献偏小。下一步需要做 `lambda_phy` 权重消融，找到更适合 7 光束系统的物理约束强度。
 
 ## 当前阶段性判断
 

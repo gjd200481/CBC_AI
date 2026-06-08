@@ -241,6 +241,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束物理约束 CNN 结果。
 
+状态：已完成第一版 7 光束物理约束 CNN。新增 `SevenBeamFourierOptics` 和 `train/train_seven_beam_physics_constrained_cnn.py`，真实标签重建远场 MSE 约为 `1.20e-16`。在 `lambda_phy=0.1`、30 轮训练下，测试集 RMSE 从普通 CNN 的 `1.02698 rad` 小幅降至 `1.02269 rad`，远场重建 MSE 从 `1.1935e-4` 降至 `1.1501e-4`。记录见 `result/logs/cycle13_seven_beam_physics_cnn_2026-06-08.md`。
+
 ### Cycle 14：2026-06-30 至 2026-07-01
 
 - 完成 7 光束 `lambda_phy` 权重消融。

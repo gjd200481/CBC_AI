@@ -251,15 +251,18 @@
 - 作用：实现傅里叶光学物理一致性损失，是后续物理约束 CNN 的核心模块。
 - 主要功能：
   - `TwoBeamFourierOptics`：torch 版双光束近场重建与 FFT 远场传播模型。
+  - `SevenBeamFourierOptics`：torch 版 7 光束近场重建与 FFT 远场传播模型。
   - `FarFieldConsistencyLoss`：计算预测相位重建远场与输入远场之间的 MSE 或 L1 损失。
   - `crop_center_torch`：torch 版中心裁剪函数。
   - `normalize_intensity`：按单张图最大值归一化远场光强。
 - 当前验证结果：
-  - 真实标签重建远场 MSE 约 `1.08e-16`。
-  - 最大像素误差约 `4.77e-7`。
-  - 扰动预测下物理损失可反向传播，梯度有限。
+  - 双光束真实标签重建远场 MSE 约 `1.08e-16`。
+  - 7 光束真实标签重建远场 MSE 约 `1.20e-16`。
+  - 7 光束真实标签重建远场最大像素误差约 `1.01e-6`。
+  - 物理一致性损失可以反向传播。
 - 后续用途：
-  - Cycle 07 中与相位监督损失组合：
+  - Cycle 07 中与双光束相位监督损失组合。
+  - Cycle 13 中与 7 光束相位监督损失组合。
 
 ```text
 L_total = L_phase + lambda_phy * L_farfield
@@ -281,6 +284,24 @@ L_total = L_phase + lambda_phy * L_farfield
   - 10 epoch
   - 测试集 RMSE 为 `0.005782 rad`，约 `0.331 deg`
   - 远场重建 MSE 为 `9.35e-9`
+
+### `train/train_seven_beam_physics_constrained_cnn.py`
+
+- 地址：`D:\CBC_AI\train\train_seven_beam_physics_constrained_cnn.py`
+- 作用：7 光束物理约束 CNN 训练入口。
+- 当前功能：
+  - 默认读取 7 光束主静态数据集 `main_clean_seven_beam`。
+  - 使用 `SimplePhaseCNN(output_dim=12)` 输出 6 路相对相位的 sin/cos 编码。
+  - 使用 `SevenBeamFourierOptics` 根据预测相位重建 7 光束远场。
+  - 总损失为 `L_total = L_phase + lambda_phy * L_farfield`。
+  - 输出整体 RMSE、MAE、远场重建 MSE 和逐通道 RMSE。
+- 当前结果：
+  - 已用于 Cycle 13 训练 `lambda_phy=0.1` 的 7 光束物理约束模型。
+  - 测试集 RMSE 为 `1.02269 rad`，略低于普通 CNN 的 `1.02698 rad`。
+  - 远场重建 MSE 为 `1.1501e-4`，低于普通 CNN 的 `1.1935e-4`。
+- 后续用途：
+  - Cycle 14 将基于该脚本进行 `lambda_phy` 权重消融。
+  - 后续噪声、振幅失配和位置偏移实验也会调用该模型作为物理约束对照。
 
 ### `train/evaluate_noise_robustness.py`
 
