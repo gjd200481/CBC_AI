@@ -191,6 +191,15 @@ result/metrics/cycle16_seven_beam_complex_robustness_improvement_2026-06-08.csv
 result/figures/cycle16_seven_beam_complex_robustness_2026-06-08.png
 ```
 
+Cycle 17 已完成 7 光束主瓣能量占比与相位补偿效果评估。采用中心半径 `3 px` 圆形区域作为主瓣，256 个样本上补偿前主瓣能量占比为 `0.35939`，普通 CNN 补偿后为 `0.51931`，物理约束 CNN 补偿后为 `0.52155`，理想相干为 `0.65063`。记录文件：
+
+```text
+result/logs/cycle17_seven_beam_main_lobe_2026-06-09.md
+result/metrics/cycle17_seven_beam_main_lobe_detail_2026-06-09.csv
+result/metrics/cycle17_seven_beam_main_lobe_summary_2026-06-09.csv
+result/figures/cycle17_seven_beam_main_lobe_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -495,6 +504,18 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/logs/cycle16_seven_beam_complex_robustness_2026-06-08.md`
 
 当前判断：物理约束对振幅失配和位置偏移这类光束状态扰动有小幅增益，但对探测器噪声不稳定。后续论文应区分“成像噪声”和“光束物理状态扰动”两类鲁棒性。
+
+### Cycle 17
+
+已完成 7 光束主瓣能量占比与相位补偿效果评估。
+
+核心输出：
+
+- `train/evaluate_seven_beam_compensation_metrics.py`
+- `result/logs/cycle17_seven_beam_main_lobe_2026-06-09.md`
+- `result/metrics/cycle17_seven_beam_main_lobe_summary_2026-06-09.csv`
+
+当前判断：普通 CNN 和物理约束 CNN 都能显著提升主瓣能量占比，物理约束 CNN 略优，但距离理想相干仍有明显空间。
 
 ## 当前阶段性判断
 

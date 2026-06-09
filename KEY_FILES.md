@@ -384,6 +384,22 @@ L_total = L_phase + lambda_phy * L_farfield
   - 物理约束 CNN 在振幅失配和位置偏移下均保持小幅 RMSE 优势。
   - 该结果与探测器噪声实验形成对照，说明物理约束更适合光束状态扰动泛化。
 
+### `train/evaluate_seven_beam_compensation_metrics.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_seven_beam_compensation_metrics.py`
+- 作用：评估 7 光束相位补偿后的主瓣能量占比。
+- 当前功能：
+  - 加载 7 光束普通 CNN 和 `lambda_phy=0.1` 物理约束 CNN。
+  - 根据预测相位计算补偿后残余相位。
+  - 重建补偿前、普通 CNN 补偿后、物理约束 CNN 补偿后和理想相干远场。
+  - 计算中心圆形主瓣区域能量占比。
+  - 输出统计 CSV 和典型远场图。
+- 当前结论：
+  - 补偿前主瓣能量占比约 `0.35939`。
+  - 普通 CNN 补偿后约 `0.51931`。
+  - 物理约束 CNN 补偿后约 `0.52155`。
+  - 理想相干约 `0.65063`。
+
 ### `train/evaluate_noise_robustness.py`
 
 - 地址：`D:\CBC_AI\train\evaluate_noise_robustness.py`
