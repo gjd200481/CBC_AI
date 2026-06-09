@@ -218,6 +218,15 @@ result/metrics/cycle19_seven_beam_compensation_effect_summary_2026-06-09.csv
 result/figures/cycle19_seven_beam_compensation_effect_2026-06-09.png
 ```
 
+Cycle 20 已完成双光束/7 光束系统规模对比。7 光束相对双光束，待预测相位数量从 `1` 增加到 `6`，网络输出维度从 `2` 增加到 `12`。普通 CNN 相位 RMSE 从双光束 `0.003742 rad` 增至 7 光束 `1.026976 rad`，物理约束 CNN 相位 RMSE 从双光束 `0.004291 rad` 增至 7 光束 `1.022686 rad`。当前定位为：双光束用于验证方法链路，7 光束用于论文主实验。记录文件：
+
+```text
+result/logs/cycle20_system_scale_comparison_2026-06-09.md
+result/metrics/cycle20_system_scale_comparison_2026-06-09.csv
+result/metrics/cycle20_system_scale_ratio_2026-06-09.csv
+result/figures/cycle20_system_scale_comparison_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -559,6 +568,20 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/figures/cycle19_seven_beam_compensation_effect_2026-06-09.png`
 
 当前判断：普通 CNN 与物理约束 CNN 都能把 7 光束远场能量重新推向主瓣区域。物理约束 CNN 在主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE 上均略优于普通 CNN，可作为论文中“物理约束提升补偿结果物理可信度”的直接支撑。
+
+### Cycle 20
+
+已完成双光束/7 光束系统规模对比。
+
+核心输出：
+
+- `train/compare_system_scale.py`
+- `result/logs/cycle20_system_scale_comparison_2026-06-09.md`
+- `result/metrics/cycle20_system_scale_comparison_2026-06-09.csv`
+- `result/metrics/cycle20_system_scale_ratio_2026-06-09.csv`
+- `result/figures/cycle20_system_scale_comparison_2026-06-09.png`
+
+当前判断：双光束任务能验证代码链路和物理损失实现，但任务维度过低，不能充分体现多路 CBC 的通道耦合问题。7 光束系统虽然当前相位 RMSE 明显更高，但更能体现论文研究价值。下一周期应进入网络结构消融，重点降低 7 光束主系统的相位 RMSE。
 
 ## 当前阶段性判断
 

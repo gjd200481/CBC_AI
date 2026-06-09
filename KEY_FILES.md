@@ -431,6 +431,20 @@ L_total = L_phase + lambda_phy * L_farfield
   - 物理约束 CNN 补偿后合成效率约 `0.78964`。
   - 物理约束 CNN 在综合补偿指标上保持小幅优势。
 
+### `train/compare_system_scale.py`
+
+- 地址：`D:\CBC_AI\train\compare_system_scale.py`
+- 作用：第 20 周期新增的双光束/7 光束系统规模对比脚本。
+- 当前功能：
+  - 读取已有双光束和 7 光束实验 CSV，不重新训练模型。
+  - 汇总光束数量、待预测相位数量、网络输出维度、样本数、训练轮数、RMSE、MAE 和远场一致性误差。
+  - 计算 7 光束相对双光束的规模放大倍数。
+  - 输出系统规模对比 CSV、倍数对比 CSV 和结果图。
+- 当前结论：
+  - 7 光束待预测相位数量和网络输出维度均为双光束的 `6` 倍。
+  - 双光束适合作为方法验证和低维基线。
+  - 7 光束更适合作为论文主实验对象，用于体现多通道 CBC 相位反演难度。
+
 ### `train/evaluate_noise_robustness.py`
 
 - 地址：`D:\CBC_AI\train\evaluate_noise_robustness.py`
