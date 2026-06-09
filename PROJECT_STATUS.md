@@ -200,6 +200,15 @@ result/metrics/cycle17_seven_beam_main_lobe_summary_2026-06-09.csv
 result/figures/cycle17_seven_beam_main_lobe_2026-06-09.png
 ```
 
+Cycle 18 已完成 7 光束 Strehl 比评估。以理想相干远场峰值强度 `12780168.0` 为基准，256 个样本上补偿前 Strehl 均值为 `0.39069`，普通 CNN 补偿后为 `0.64717`，物理约束 CNN 补偿后为 `0.65356`，理想相干为 `1.00000`。记录文件：
+
+```text
+result/logs/cycle18_seven_beam_strehl_2026-06-09.md
+result/metrics/cycle18_seven_beam_strehl_detail_2026-06-09.csv
+result/metrics/cycle18_seven_beam_strehl_summary_2026-06-09.csv
+result/figures/cycle18_seven_beam_strehl_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -516,6 +525,18 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/metrics/cycle17_seven_beam_main_lobe_summary_2026-06-09.csv`
 
 当前判断：普通 CNN 和物理约束 CNN 都能显著提升主瓣能量占比，物理约束 CNN 略优，但距离理想相干仍有明显空间。
+
+### Cycle 18
+
+已完成 7 光束 Strehl 比评估。
+
+核心输出：
+
+- `train/evaluate_seven_beam_strehl.py`
+- `result/logs/cycle18_seven_beam_strehl_2026-06-09.md`
+- `result/metrics/cycle18_seven_beam_strehl_summary_2026-06-09.csv`
+
+当前判断：普通 CNN 和物理约束 CNN 都能显著提高 Strehl 比；物理约束 CNN 的 Strehl 比和残余相位 RMSE 略优于普通 CNN。
 
 ## 当前阶段性判断
 

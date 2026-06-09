@@ -400,6 +400,21 @@ L_total = L_phase + lambda_phy * L_farfield
   - 物理约束 CNN 补偿后约 `0.52155`。
   - 理想相干约 `0.65063`。
 
+### `train/evaluate_seven_beam_strehl.py`
+
+- 地址：`D:\CBC_AI\train\evaluate_seven_beam_strehl.py`
+- 作用：评估 7 光束相位补偿后的 Strehl 比。
+- 当前功能：
+  - 以理想相干远场峰值强度为基准。
+  - 计算补偿前、普通 CNN 补偿后、物理约束 CNN 补偿后和理想相干状态的 Strehl 比。
+  - 同时记录残余相位 RMSE。
+  - 输出明细 CSV、汇总 CSV 和 Strehl 对比图。
+- 当前结论：
+  - 补偿前 Strehl 均值约 `0.39069`。
+  - 普通 CNN 补偿后约 `0.64717`。
+  - 物理约束 CNN 补偿后约 `0.65356`。
+  - 理想相干为 `1.00000`。
+
 ### `train/evaluate_noise_robustness.py`
 
 - 地址：`D:\CBC_AI\train\evaluate_noise_robustness.py`
