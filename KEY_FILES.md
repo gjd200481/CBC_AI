@@ -279,9 +279,14 @@
 - 作用：统一保存训练阶段使用的神经网络结构。
 - 当前模型：
   - `SimplePhaseCNN`：三层卷积 + 全连接回归头。
+  - `WidePhaseCNN`：更宽的三层卷积结构，并使用自适应池化降低全连接层参数量。
+  - `ResidualPhaseCNN`：残差连接 + 自适应池化的候选结构。
   - 输入：单通道远场光强图。
   - 双光束输出：`[sin(phi), cos(phi)]`。
   - 7 光束输出：设置 `output_dim=12`，对应 6 路相对相位的 `sin/cos` 编码。
+- 辅助函数：
+  - `build_phase_model()`：按模型名称构建网络，支持结构消融。
+  - `count_parameters()`：统计可训练参数量。
 
 ### `train/physics_loss.py`
 
@@ -356,6 +361,19 @@ L_total = L_phase + lambda_phy * L_farfield
   - 30 epoch 候选复训后，`lambda_phy=0.1` 仍优于 `lambda_phy=0.5`。
 - 后续用途：
   - 若需要论文主实验更稳，可围绕 `0.05, 0.1, 0.2` 做更细长训练搜索。
+
+### `train/sweep_seven_beam_architecture.py`
+
+- 地址：`D:\CBC_AI\train\sweep_seven_beam_architecture.py`
+- 作用：第 21 周期新增的 7 光束网络结构快速消融脚本。
+- 当前功能：
+  - 对比 `simple_cnn`、`wide_cnn` 和 `residual_cnn`。
+  - 记录每个模型的参数量、训练耗时、验证 RMSE、测试 RMSE、MAE 和逐通道 RMSE。
+  - 支持 `--max-samples` 限制样本数，便于 CPU 环境下快速筛选结构。
+  - 输出结构消融汇总 CSV、每个模型的训练历史 CSV 和对比图。
+- 当前结论：
+  - 96 样本、2 epoch 快速筛选中，`residual_cnn` 测试 RMSE 为 `1.709031 rad`，是三者中最低。
+  - 该结果仅用于选择候选结构，后续需要完整数据长训练验证。
 
 ### `train/evaluate_seven_beam_noise_robustness.py`
 

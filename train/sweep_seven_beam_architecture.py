@@ -1,0 +1,348 @@
+import argparse
+import csv
+import sys
+import time
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Subset
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from train.data_utils import FarFieldPhaseDataset, split_dataset
+from train.models import build_phase_model, count_parameters
+from train.train_seven_beam_baseline import (
+    channel_rmse_from_sin_cos,
+    evaluate_model,
+    save_history_csv,
+    save_summary_csv,
+    train_one_epoch,
+)
+
+
+def save_rows(rows, output_path):
+    """保存结构消融汇总表。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def make_model_tag(model_name):
+    """生成可用于文件名的模型标签。"""
+    return model_name.replace("-", "_").replace(".", "p")
+
+
+def train_one_model(model_name, args, loaders, output_dim, device):
+    """训练并评估一个网络结构。"""
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    model = build_phase_model(
+        model_name=model_name,
+        image_size=args.image_size,
+        output_dim=output_dim,
+    ).to(device)
+    parameter_count = count_parameters(model)
+    loss_fn = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+
+    history = []
+    start_time = time.perf_counter()
+    for epoch in range(1, args.epochs + 1):
+        train_loss = train_one_epoch(
+            model=model,
+            data_loader=loaders["train"],
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            device=device,
+        )
+        val_metrics, _, _ = evaluate_model(
+            model=model,
+            data_loader=loaders["val"],
+            loss_fn=loss_fn,
+            device=device,
+        )
+        history.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_loss": val_metrics["loss"],
+                "val_rmse_rad": val_metrics["rmse_rad"],
+                "val_rmse_deg": val_metrics["rmse_deg"],
+                "val_mae_rad": val_metrics["mae_rad"],
+                "val_mae_deg": val_metrics["mae_deg"],
+            }
+        )
+        print(
+            f"{model_name} | epoch {epoch:03d}/{args.epochs} | "
+            f"train={train_loss:.6f} | val_rmse={val_metrics['rmse_rad']:.6f}"
+        )
+
+    train_seconds = time.perf_counter() - start_time
+    test_metrics, pred_values, true_values = evaluate_model(
+        model=model,
+        data_loader=loaders["test"],
+        loss_fn=loss_fn,
+        device=device,
+    )
+    channel_rmse = channel_rmse_from_sin_cos(pred_values, true_values)
+
+    model_tag = make_model_tag(model_name)
+    history_path = args.history_dir / f"{model_tag}_history.csv"
+    summary_path = args.history_dir / f"{model_tag}_summary.csv"
+    model_path = args.model_dir / f"cycle21_{model_tag}_seven_beam.pth"
+
+    save_history_csv(history, history_path)
+    summary = {
+        "model_name": model_name,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "learning_rate": args.learning_rate,
+        "parameter_count": parameter_count,
+        "train_seconds": train_seconds,
+        "train_samples": loaders["splits"]["train"],
+        "val_samples": loaders["splits"]["val"],
+        "test_samples": loaders["splits"]["test"],
+        "rmse_rad": test_metrics["rmse_rad"],
+        "rmse_deg": test_metrics["rmse_deg"],
+        "mae_rad": test_metrics["mae_rad"],
+        "mae_deg": test_metrics["mae_deg"],
+        "mean_error_rad": test_metrics["mean_error_rad"],
+        "mean_error_deg": test_metrics["mean_error_deg"],
+        "loss": test_metrics["loss"],
+    }
+    for index, rmse in enumerate(channel_rmse, start=1):
+        summary[f"channel_{index}_rmse_rad"] = float(rmse)
+    save_summary_csv(summary, summary_path)
+
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_name": model_name,
+            "model_state_dict": model.state_dict(),
+            "summary": summary,
+            "history": history,
+        },
+        model_path,
+    )
+
+    row = {
+        "model_name": model_name,
+        "parameter_count": parameter_count,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "learning_rate": args.learning_rate,
+        "train_seconds": train_seconds,
+        "train_samples": loaders["splits"]["train"],
+        "val_samples": loaders["splits"]["val"],
+        "test_samples": loaders["splits"]["test"],
+        "test_rmse_rad": test_metrics["rmse_rad"],
+        "test_rmse_deg": test_metrics["rmse_deg"],
+        "test_mae_rad": test_metrics["mae_rad"],
+        "test_mae_deg": test_metrics["mae_deg"],
+        "test_loss": test_metrics["loss"],
+        "best_val_rmse_rad": min(item["val_rmse_rad"] for item in history),
+        "final_val_rmse_rad": history[-1]["val_rmse_rad"],
+        "history_path": str(history_path),
+        "summary_path": str(summary_path),
+        "model_path": str(model_path),
+    }
+    for index, rmse in enumerate(channel_rmse, start=1):
+        row[f"channel_{index}_rmse_rad"] = float(rmse)
+    return row, history
+
+
+def build_limited_dataloaders(args):
+    """构建结构消融使用的数据读取器，可限制样本数以便快速筛选模型。"""
+    dataset = FarFieldPhaseDataset(
+        image_path=args.image_path,
+        label_path=args.label_path,
+        expected_size=(args.image_size, args.image_size),
+    )
+    if args.max_samples is not None:
+        max_samples = min(args.max_samples, len(dataset))
+        dataset = Subset(dataset, list(range(max_samples)))
+
+    train_set, val_set, test_set = split_dataset(
+        dataset=dataset,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        seed=args.seed,
+    )
+
+    return {
+        "dataset": dataset,
+        "train": DataLoader(train_set, batch_size=args.batch_size, shuffle=True),
+        "val": DataLoader(val_set, batch_size=args.batch_size, shuffle=False),
+        "test": DataLoader(test_set, batch_size=args.batch_size, shuffle=False),
+        "splits": {
+            "train": len(train_set),
+            "val": len(val_set),
+            "test": len(test_set),
+        },
+        "label_dim": 12,
+    }
+
+
+def plot_architecture_results(summary_rows, histories, figure_path):
+    """绘制结构消融结果图。"""
+    figure_path = Path(figure_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    model_names = [row["model_name"] for row in summary_rows]
+
+    plt.figure(figsize=(14, 9))
+
+    plt.subplot(2, 2, 1)
+    for model_name, history in histories.items():
+        plt.plot(
+            [row["epoch"] for row in history],
+            [row["val_rmse_rad"] for row in history],
+            marker="o",
+            label=model_name,
+        )
+    plt.xlabel("Epoch")
+    plt.ylabel("Validation RMSE(rad)")
+    plt.title("Validation convergence")
+    plt.legend()
+
+    plt.subplot(2, 2, 2)
+    plt.bar(model_names, [row["test_rmse_rad"] for row in summary_rows])
+    plt.xticks(rotation=20)
+    plt.ylabel("Test RMSE(rad)")
+    plt.title("Test phase RMSE")
+
+    plt.subplot(2, 2, 3)
+    plt.bar(model_names, [row["parameter_count"] / 1e6 for row in summary_rows])
+    plt.xticks(rotation=20)
+    plt.ylabel("Parameters(M)")
+    plt.title("Model size")
+
+    plt.subplot(2, 2, 4)
+    plt.bar(model_names, [row["train_seconds"] for row in summary_rows])
+    plt.xticks(rotation=20)
+    plt.ylabel("Seconds")
+    plt.title("Training time")
+
+    plt.tight_layout()
+    plt.savefig(figure_path, dpi=200)
+    plt.close()
+    print("Figure saved to:", figure_path)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run seven-beam CNN architecture ablation."
+    )
+    parser.add_argument(
+        "--image-path",
+        type=Path,
+        default=REPO_ROOT
+        / "dataset"
+        / "seven_beam"
+        / "main_static"
+        / "images_main_clean_seven_beam.npy",
+    )
+    parser.add_argument(
+        "--label-path",
+        type=Path,
+        default=REPO_ROOT
+        / "dataset"
+        / "seven_beam"
+        / "main_static"
+        / "labels_main_clean_seven_beam.npy",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        default=["simple_cnn", "wide_cnn", "residual_cnn"],
+    )
+    parser.add_argument("--epochs", type=int, default=2)
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--train-ratio", type=float, default=0.7)
+    parser.add_argument("--val-ratio", type=float, default=0.15)
+    parser.add_argument("--seed", type=int, default=20260621)
+    parser.add_argument("--image-size", type=int, default=160)
+    parser.add_argument("--max-samples", type=int, default=96)
+    parser.add_argument(
+        "--history-dir",
+        type=Path,
+        default=REPO_ROOT / "result" / "metrics" / "cycle21_seven_beam_architecture",
+    )
+    parser.add_argument(
+        "--summary-csv",
+        type=Path,
+        default=REPO_ROOT
+        / "result"
+        / "metrics"
+        / "cycle21_seven_beam_architecture_ablation_2026-06-09.csv",
+    )
+    parser.add_argument(
+        "--figure-path",
+        type=Path,
+        default=REPO_ROOT
+        / "result"
+        / "figures"
+        / "cycle21_seven_beam_architecture_ablation_2026-06-09.png",
+    )
+    parser.add_argument(
+        "--model-dir",
+        type=Path,
+        default=REPO_ROOT / "models",
+    )
+    args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    loaders = build_limited_dataloaders(args)
+    output_dim = loaders["label_dim"]
+    if output_dim != 12:
+        raise ValueError(f"Seven-beam labels should have 12 columns, got {output_dim}")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
+    print("Splits:", loaders["splits"])
+    print("Output dim:", output_dim)
+
+    summary_rows = []
+    histories = {}
+    for model_name in args.models:
+        row, history = train_one_model(
+            model_name=model_name,
+            args=args,
+            loaders=loaders,
+            output_dim=output_dim,
+            device=device,
+        )
+        summary_rows.append(row)
+        histories[model_name] = history
+
+    best_row = min(summary_rows, key=lambda row: row["test_rmse_rad"])
+    for row in summary_rows:
+        row["is_best_by_test_rmse"] = row["model_name"] == best_row["model_name"]
+        row["rmse_gap_to_best_rad"] = row["test_rmse_rad"] - best_row["test_rmse_rad"]
+
+    save_rows(summary_rows, args.summary_csv)
+    plot_architecture_results(summary_rows, histories, args.figure_path)
+
+    print("Summary saved to:", args.summary_csv)
+    print(
+        "Best model:",
+        best_row["model_name"],
+        f"RMSE={best_row['test_rmse_rad']:.6f} rad",
+    )
+
+
+if __name__ == "__main__":
+    main()

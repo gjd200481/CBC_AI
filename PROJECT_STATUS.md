@@ -227,6 +227,15 @@ result/metrics/cycle20_system_scale_ratio_2026-06-09.csv
 result/figures/cycle20_system_scale_comparison_2026-06-09.png
 ```
 
+Cycle 21 已完成 7 光束网络结构快速消融。新增 `WidePhaseCNN`、`ResidualPhaseCNN` 和结构消融脚本。由于当前 CPU 全量多结构训练耗时较高，本周期采用 96 样本、2 epoch 进行候选筛选。结果显示：`simple_cnn` 测试 RMSE 为 `1.815493 rad`，`wide_cnn` 为 `1.781429 rad`，`residual_cnn` 为 `1.709031 rad`。当前判断是残差 CNN 值得进入完整数据长训练验证。记录文件：
+
+```text
+result/logs/cycle21_seven_beam_architecture_ablation_2026-06-09.md
+result/metrics/cycle21_seven_beam_architecture_ablation_2026-06-09.csv
+result/metrics/cycle21_seven_beam_architecture/
+result/figures/cycle21_seven_beam_architecture_ablation_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -582,6 +591,20 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/figures/cycle20_system_scale_comparison_2026-06-09.png`
 
 当前判断：双光束任务能验证代码链路和物理损失实现，但任务维度过低，不能充分体现多路 CBC 的通道耦合问题。7 光束系统虽然当前相位 RMSE 明显更高，但更能体现论文研究价值。下一周期应进入网络结构消融，重点降低 7 光束主系统的相位 RMSE。
+
+### Cycle 21
+
+已完成 7 光束网络结构快速消融。
+
+核心输出：
+
+- `train/models.py` 中新增 `WidePhaseCNN` 和 `ResidualPhaseCNN`
+- `train/sweep_seven_beam_architecture.py`
+- `result/logs/cycle21_seven_beam_architecture_ablation_2026-06-09.md`
+- `result/metrics/cycle21_seven_beam_architecture_ablation_2026-06-09.csv`
+- `result/figures/cycle21_seven_beam_architecture_ablation_2026-06-09.png`
+
+当前判断：小样本快速筛选中，`residual_cnn` 表现最好，但训练样本数和轮数都很小，只能说明残差结构值得继续验证。下一步应在完整 7 光束数据集上对 `residual_cnn` 做更长训练，并与 `simple_cnn` 30 epoch baseline 进行公平对比。
 
 ## 当前阶段性判断
 

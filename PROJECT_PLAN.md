@@ -327,6 +327,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：网络结构消融实验。
 
+状态：已完成第一版 7 光束网络结构快速消融。新增 `WidePhaseCNN`、`ResidualPhaseCNN`、`build_phase_model()` 和 `train/sweep_seven_beam_architecture.py`。由于当前 CPU 全量多结构训练耗时较高，本周期采用 96 样本、2 epoch 快速筛选。结果显示 `residual_cnn` 测试 RMSE 为 `1.709031 rad`，优于 `wide_cnn` 的 `1.781429 rad` 和 `simple_cnn` 的 `1.815493 rad`。该结果仅作为候选筛选，后续需要完整数据长训练验证。记录见 `result/logs/cycle21_seven_beam_architecture_ablation_2026-06-09.md`。
+
 ### Cycle 22：2026-07-16 至 2026-07-17
 
 - 做泛化实验。
