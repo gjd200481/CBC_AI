@@ -46,6 +46,20 @@
 - 使用建议：
   - 新增脚本、结果或数据集前先检查命名是否符合该规范。
 
+### `GPU_TRAINING_3060.md`
+
+- 地址：`D:\CBC_AI\GPU_TRAINING_3060.md`
+- 作用：RTX 3060 电脑上的完整数据长轮次训练说明。
+- 当前内容：
+  - CUDA 可用性检查命令。
+  - 7 光束主数据集生成命令。
+  - `residual_cnn` 50 epoch 和 80 epoch 推荐训练命令。
+  - `simple_cnn` 与 `residual_cnn` 公平对比命令。
+  - 长训练结果带回当前项目后的判断标准。
+- 使用建议：
+  - 在 GPU 电脑上训练前先阅读。
+  - 长训练完成后，把 CSV、图和本地模型权重带回当前项目继续评估。
+
 ### `.gitignore`
 
 - 地址：`D:\CBC_AI\.gitignore`
@@ -370,10 +384,26 @@ L_total = L_phase + lambda_phy * L_farfield
   - 对比 `simple_cnn`、`wide_cnn` 和 `residual_cnn`。
   - 记录每个模型的参数量、训练耗时、验证 RMSE、测试 RMSE、MAE 和逐通道 RMSE。
   - 支持 `--max-samples` 限制样本数，便于 CPU 环境下快速筛选结构。
+  - 支持 `--full-dataset`、`--device cuda`、`--num-workers` 和 `--pin-memory`，便于 RTX 3060 上完整数据长训练。
+  - 支持 `--experiment-tag`，避免长训练结果覆盖快速筛选结果。
   - 输出结构消融汇总 CSV、每个模型的训练历史 CSV 和对比图。
 - 当前结论：
   - 96 样本、2 epoch 快速筛选中，`residual_cnn` 测试 RMSE 为 `1.709031 rad`，是三者中最低。
   - 该结果仅用于选择候选结构，后续需要完整数据长训练验证。
+
+### `scripts/run_cycle22_gpu_residual.ps1`
+
+- 地址：`D:\CBC_AI\scripts\run_cycle22_gpu_residual.ps1`
+- 作用：第 22 周期新增的 RTX 3060 长训练启动脚本。
+- 当前功能：
+  - 默认运行 `residual_cnn` 完整 7 光束数据训练。
+  - 默认参数为 `50 epoch`、`batch size=64`、`learning rate=0.001`、`num_workers=2`。
+  - 自动设置结果文件名为 `cycle22_residual_full_<epoch>epoch`。
+- 使用示例：
+
+```powershell
+.\scripts\run_cycle22_gpu_residual.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2
+```
 
 ### `train/evaluate_seven_beam_noise_robustness.py`
 

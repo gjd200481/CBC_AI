@@ -331,12 +331,15 @@ L_total = L_phase + lambda_phy * L_farfield
 
 ### Cycle 22：2026-07-16 至 2026-07-17
 
-- 做泛化实验。
-- 训练固定扰动分布，测试未见过的噪声强度、振幅失配范围和位置偏移范围。
-- 分析模型适用边界。
-- 总结物理约束对泛化能力的提升。
+- 利用 RTX 3060 电脑准备 7 光束候选模型长轮次训练。
+- 将 `residual_cnn` 从快速筛选推进到完整数据长训练。
+- 增强结构消融脚本，支持 `--full-dataset`、`--device cuda`、`--num-workers` 和实验标签。
+- 输出 GPU 训练说明和启动脚本。
+- 本地完成最小 smoke 验证。
 
-目标输出：泛化能力结果。
+目标输出：7 光束残差 CNN 完整数据长训练准备版本。
+
+状态：已完成 GPU 长训练准备。`train/sweep_seven_beam_architecture.py` 已支持完整数据、CUDA 设备、DataLoader 加速参数和实验标签；新增 `GPU_TRAINING_3060.md` 与 `scripts/run_cycle22_gpu_residual.ps1`。本地 CPU smoke 使用 24 样本、1 epoch 验证通过，`residual_cnn` 测试 RMSE 为 `1.812770 rad`，该结果仅用于流程检查，不作为论文性能结论。记录见 `result/logs/cycle22_gpu_training_preparation_2026-06-09.md`。
 
 ### Cycle 23：2026-07-18 至 2026-07-19
 

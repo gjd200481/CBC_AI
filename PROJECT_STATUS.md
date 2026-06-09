@@ -236,6 +236,15 @@ result/metrics/cycle21_seven_beam_architecture/
 result/figures/cycle21_seven_beam_architecture_ablation_2026-06-09.png
 ```
 
+Cycle 22 已完成 RTX 3060 长轮次训练准备。根据用户补充的 GPU 资源，本周期优先增强 `train/sweep_seven_beam_architecture.py`，使其支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory`、`--experiment-tag` 和 `--no-save-model`。新增 `GPU_TRAINING_3060.md` 和 `scripts/run_cycle22_gpu_residual.ps1`。当前 CPU 环境完成了 24 样本、1 epoch 的 smoke 验证，流程可正常读取数据、训练、评估和保存结果。记录文件：
+
+```text
+result/logs/cycle22_gpu_training_preparation_2026-06-09.md
+result/metrics/cycle22_gpu_smoke_2026-06-09.csv
+result/metrics/cycle22_gpu_smoke/
+result/figures/cycle22_gpu_smoke_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -605,6 +614,20 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/figures/cycle21_seven_beam_architecture_ablation_2026-06-09.png`
 
 当前判断：小样本快速筛选中，`residual_cnn` 表现最好，但训练样本数和轮数都很小，只能说明残差结构值得继续验证。下一步应在完整 7 光束数据集上对 `residual_cnn` 做更长训练，并与 `simple_cnn` 30 epoch baseline 进行公平对比。
+
+### Cycle 22
+
+已完成 RTX 3060 长轮次训练准备。
+
+核心输出：
+
+- `GPU_TRAINING_3060.md`
+- `scripts/run_cycle22_gpu_residual.ps1`
+- `train/sweep_seven_beam_architecture.py` 的 GPU 长训练参数增强
+- `result/logs/cycle22_gpu_training_preparation_2026-06-09.md`
+- `result/metrics/cycle22_gpu_smoke_2026-06-09.csv`
+
+当前判断：项目已具备在 RTX 3060 电脑上进行 `residual_cnn` 完整数据 50/80 epoch 长训练的入口。长训练完成后，需要把结果 CSV、训练曲线图和本地模型权重带回当前项目，再继续做补偿效果评估和泛化实验。
 
 ## 当前阶段性判断
 

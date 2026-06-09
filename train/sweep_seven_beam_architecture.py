@@ -26,6 +26,15 @@ from train.train_seven_beam_baseline import (
 )
 
 
+def resolve_device(device_name):
+    """根据命令行参数选择训练设备。"""
+    if device_name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device_name == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested, but torch.cuda.is_available() is False")
+    return torch.device(device_name)
+
+
 def save_rows(rows, output_path):
     """保存结构消融汇总表。"""
     output_path = Path(output_path)
@@ -99,7 +108,7 @@ def train_one_model(model_name, args, loaders, output_dim, device):
     model_tag = make_model_tag(model_name)
     history_path = args.history_dir / f"{model_tag}_history.csv"
     summary_path = args.history_dir / f"{model_tag}_summary.csv"
-    model_path = args.model_dir / f"cycle21_{model_tag}_seven_beam.pth"
+    model_path = args.model_dir / f"{args.experiment_tag}_{model_tag}_seven_beam.pth"
 
     save_history_csv(history, history_path)
     summary = {
@@ -107,7 +116,10 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
+        "device": str(device),
+        "sample_scope": "full" if args.full_dataset else f"first_{args.max_samples}",
         "parameter_count": parameter_count,
+        "model_saved": not args.no_save_model,
         "train_seconds": train_seconds,
         "train_samples": loaders["splits"]["train"],
         "val_samples": loaders["splits"]["val"],
@@ -124,16 +136,17 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         summary[f"channel_{index}_rmse_rad"] = float(rmse)
     save_summary_csv(summary, summary_path)
 
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_name": model_name,
-            "model_state_dict": model.state_dict(),
-            "summary": summary,
-            "history": history,
-        },
-        model_path,
-    )
+    if not args.no_save_model:
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "model_name": model_name,
+                "model_state_dict": model.state_dict(),
+                "summary": summary,
+                "history": history,
+            },
+            model_path,
+        )
 
     row = {
         "model_name": model_name,
@@ -141,6 +154,9 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
+        "device": str(device),
+        "sample_scope": "full" if args.full_dataset else f"first_{args.max_samples}",
+        "model_saved": not args.no_save_model,
         "train_seconds": train_seconds,
         "train_samples": loaders["splits"]["train"],
         "val_samples": loaders["splits"]["val"],
@@ -163,14 +179,15 @@ def train_one_model(model_name, args, loaders, output_dim, device):
 
 def build_limited_dataloaders(args):
     """构建结构消融使用的数据读取器，可限制样本数以便快速筛选模型。"""
-    dataset = FarFieldPhaseDataset(
+    base_dataset = FarFieldPhaseDataset(
         image_path=args.image_path,
         label_path=args.label_path,
         expected_size=(args.image_size, args.image_size),
     )
-    if args.max_samples is not None:
-        max_samples = min(args.max_samples, len(dataset))
-        dataset = Subset(dataset, list(range(max_samples)))
+    dataset = base_dataset
+    if not args.full_dataset and args.max_samples is not None:
+        max_samples = min(args.max_samples, len(base_dataset))
+        dataset = Subset(base_dataset, list(range(max_samples)))
 
     train_set, val_set, test_set = split_dataset(
         dataset=dataset,
@@ -181,15 +198,34 @@ def build_limited_dataloaders(args):
 
     return {
         "dataset": dataset,
-        "train": DataLoader(train_set, batch_size=args.batch_size, shuffle=True),
-        "val": DataLoader(val_set, batch_size=args.batch_size, shuffle=False),
-        "test": DataLoader(test_set, batch_size=args.batch_size, shuffle=False),
+        "train": DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+        ),
+        "val": DataLoader(
+            val_set,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+        ),
+        "test": DataLoader(
+            test_set,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+        ),
         "splits": {
             "train": len(train_set),
             "val": len(val_set),
             "test": len(test_set),
         },
-        "label_dim": 12,
+        "label_dim": base_dataset.labels.shape[1],
+        "total_samples": len(dataset),
     }
 
 
@@ -274,6 +310,12 @@ def main():
     parser.add_argument("--seed", type=int, default=20260621)
     parser.add_argument("--image-size", type=int, default=160)
     parser.add_argument("--max-samples", type=int, default=96)
+    parser.add_argument("--full-dataset", action="store_true")
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--no-save-model", action="store_true")
+    parser.add_argument("--experiment-tag", default="cycle21")
     parser.add_argument(
         "--history-dir",
         type=Path,
@@ -310,8 +352,9 @@ def main():
     if output_dim != 12:
         raise ValueError(f"Seven-beam labels should have 12 columns, got {output_dim}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(args.device)
     print("Using device:", device)
+    print("Total samples used:", loaders["total_samples"])
     print("Splits:", loaders["splits"])
     print("Output dim:", output_dim)
 

@@ -40,6 +40,7 @@ CNN 相位反演
 - 7 光束相位补偿综合效果实验。
 - 双光束/7 光束系统规模对比。
 - 7 光束网络结构快速消融。
+- RTX 3060 长轮次训练准备。
 
 当前暂定 7 光束主实验物理损失权重为：
 
@@ -175,6 +176,12 @@ Strehl 比阶段性结论：
 - 已新增 `wide_cnn` 和 `residual_cnn` 两类候选结构。
 - 96 样本、2 epoch 快速筛选中，`residual_cnn` 的测试 RMSE 为 `1.709031 rad`，优于同设置下的 `simple_cnn` 和 `wide_cnn`。
 - 该结果只用于候选筛选，后续需要完整数据长训练验证。
+
+GPU 长训练准备：
+
+- 已新增 [GPU_TRAINING_3060.md](GPU_TRAINING_3060.md)，给出 RTX 3060 上运行 `residual_cnn` 完整数据 50/80 epoch 的命令。
+- 已新增 `scripts/run_cycle22_gpu_residual.ps1`，可在 GPU 电脑上直接启动长训练。
+- `train/sweep_seven_beam_architecture.py` 已支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory` 和 `--experiment-tag`。
 
 ## 项目文档
 
