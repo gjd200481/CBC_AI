@@ -209,6 +209,15 @@ result/metrics/cycle18_seven_beam_strehl_summary_2026-06-09.csv
 result/figures/cycle18_seven_beam_strehl_2026-06-09.png
 ```
 
+Cycle 19 已完成 7 光束相位补偿综合效果实验。该周期将主瓣能量、旁瓣能量、Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE 放在同一脚本中统一评估。256 个样本上，补偿前主瓣能量占比为 `0.35939`，普通 CNN 补偿后为 `0.51931`，物理约束 CNN 补偿后为 `0.52155`；补偿前合成效率为 `0.53286`，普通 CNN 补偿后为 `0.78602`，物理约束 CNN 补偿后为 `0.78964`；补偿前相位 RMSE 为 `1.77491 rad`，普通 CNN 补偿后为 `0.90591 rad`，物理约束 CNN 补偿后为 `0.89428 rad`。记录文件：
+
+```text
+result/logs/cycle19_seven_beam_compensation_effect_2026-06-09.md
+result/metrics/cycle19_seven_beam_compensation_effect_detail_2026-06-09.csv
+result/metrics/cycle19_seven_beam_compensation_effect_summary_2026-06-09.csv
+result/figures/cycle19_seven_beam_compensation_effect_2026-06-09.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -537,6 +546,19 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/metrics/cycle18_seven_beam_strehl_summary_2026-06-09.csv`
 
 当前判断：普通 CNN 和物理约束 CNN 都能显著提高 Strehl 比；物理约束 CNN 的 Strehl 比和残余相位 RMSE 略优于普通 CNN。
+
+### Cycle 19
+
+已完成 7 光束相位补偿综合效果实验。
+
+核心输出：
+
+- `train/evaluate_seven_beam_compensation_effect.py`
+- `result/logs/cycle19_seven_beam_compensation_effect_2026-06-09.md`
+- `result/metrics/cycle19_seven_beam_compensation_effect_summary_2026-06-09.csv`
+- `result/figures/cycle19_seven_beam_compensation_effect_2026-06-09.png`
+
+当前判断：普通 CNN 与物理约束 CNN 都能把 7 光束远场能量重新推向主瓣区域。物理约束 CNN 在主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE 上均略优于普通 CNN，可作为论文中“物理约束提升补偿结果物理可信度”的直接支撑。
 
 ## 当前阶段性判断
 
