@@ -101,3 +101,31 @@ ResidualPhaseCNN + L_total = L_phase + lambda_phy * L_farfield
 - `best_checkpoint_test_rmse_rad`
 - `best_checkpoint_farfield_loss`
 - 后续补偿评估中的主瓣能量占比、Strehl 比和合成效率
+
+## 8. CBC 自研轻量网络 + 周期相位损失
+
+参考 Xie et al. 2024 后，当前路线不直接复用 MobileNetV3-Small，而是在本项目中新增自研 `cbc_lite_cnn`。该模型面向 7 光束 CBC 远场条纹图像，使用深度可分离残差块、空间/通道门控和多尺度池化回归头。
+
+在 RTX 3060 上优先运行：
+
+```powershell
+.\scripts\run_cycle26_gpu_cbc_lite.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2 -Seed 20260612 -PhaseLoss cyclic
+```
+
+该命令会训练：
+
+```text
+cbc_lite_cnn + cyclic phase loss
+```
+
+结果重点看：
+
+- `best_checkpoint_test_rmse_rad`
+- 逐通道 RMSE 是否比 `residual_cnn_best` 更均衡
+- 后续补偿评估中的主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE
+
+如果 `cyclic` 不稳定，可补跑带单位圆约束的版本：
+
+```powershell
+.\scripts\run_cycle26_gpu_cbc_lite.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2 -Seed 20260612 -PhaseLoss cyclic_unit
+```

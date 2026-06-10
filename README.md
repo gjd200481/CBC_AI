@@ -185,7 +185,9 @@ GPU 长训练准备：
 - RTX 3060 已完成 `residual_cnn` 50 epoch 复跑，最终测试 RMSE 为 `1.319034 rad`，未优于当前普通 CNN 和物理约束 CNN。
 - 后续仍需要 3060，但重点改为保存最佳验证 checkpoint，并用 `seed=20260612` 做公平长训练对比。
 - 最新最佳 checkpoint 结果显示：`residual_cnn_best` 测试 RMSE 为 `0.992071 rad`，已低于普通 CNN 和物理约束 CNN。下一步需要验证它的主瓣能量、Strehl 比和合成效率是否同步提升。
-- 下一步建议训练 `residual_cnn + physics loss`，即残差网络叠加傅里叶远场物理一致性损失；该实验需要 RTX 3060。
+- `residual_cnn + physics loss` 已进入下一轮验证，当前 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，说明物理约束与残差结构组合有小幅收益。
+- 根据 Xie et al. 2024 的启发，项目已新增周期相位损失 `--phase-loss cyclic`，但不照搬 MobileNetV3-Small；新的候选模型为自研 `cbc_lite_cnn`，面向 CBC 远场条纹图像设计。
+- 下一步建议在 RTX 3060 上运行 `.\scripts\run_cycle26_gpu_cbc_lite.ps1`，训练 `cbc_lite_cnn + cyclic phase loss`，并与 `residual_cnn_best`、`residual_cnn + physics loss` 做公平对比。
 
 ## 项目文档
 

@@ -645,6 +645,10 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 
 下一阶段建议已更新：可以尝试 `residual_cnn + physics loss`。当前 `residual_cnn_best` 只有残差结构，没有物理约束；`physics_cnn_lambda_0.1` 有物理约束，但没有残差结构。因此新实验应训练 `ResidualPhaseCNN + FarFieldConsistencyLoss`，重点比较 `best_checkpoint_test_rmse_rad`、远场 MSE、主瓣能量占比、Strehl 比和合成效率。该实验需要 RTX 3060。
 
+Cycle 25 补充：`residual_cnn + physics loss` 已完成一轮 GPU 结果回收。当前最佳设置为 `lambda_phy=0.05`，最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，相比 `residual_cnn_best` 的 `0.992071 rad` 有小幅提升，但与 Xie et al. 2024 报道的约 `0.076π ≈ 0.239 rad` 仍有较大差距。
+
+Cycle 26 计划已调整为“文献启发的自研模型创新”。保留 Xie et al. 的周期相位损失思想，新增 `--phase-loss cyclic`；模型结构不照搬 MobileNetV3-Small，而采用项目自研 `cbc_lite_cnn`，包含深度可分离残差块、空间/通道门控和多尺度池化相位回归头。下一步在 RTX 3060 上运行 `scripts/run_cycle26_gpu_cbc_lite.ps1`，验证 `cbc_lite_cnn + cyclic phase loss` 是否优于当前残差与物理约束路线。
+
 ## 当前阶段性判断
 
 当前代码已经形成了较完整的双光束研究闭环：

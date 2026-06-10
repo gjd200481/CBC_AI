@@ -283,6 +283,8 @@
   - `wrap_phase_error`：将相位误差折回 `[-pi, pi]`。
   - `phase_rmse_from_sin_cos`：根据 sin/cos 编码计算周期 RMSE。
   - `phase_metrics_from_sin_cos`：输出 RMSE、MAE 和平均误差。
+  - `cyclic_phase_loss_from_sin_cos`：实现 `2 - 2*cos(delta)` 周期相位损失，适配现有 `sin/cos` 标签。
+  - `build_phase_loss()`：按名称构建 `mse`、`cyclic` 或 `cyclic_unit` 损失函数。
 - 当前用途：
   - 普通 CNN 训练评估。
   - 后续物理约束 CNN 训练评估。
@@ -295,6 +297,7 @@
   - `SimplePhaseCNN`：三层卷积 + 全连接回归头。
   - `WidePhaseCNN`：更宽的三层卷积结构，并使用自适应池化降低全连接层参数量。
   - `ResidualPhaseCNN`：残差连接 + 自适应池化的候选结构。
+  - `CBCPhaseLiteCNN`：面向 CBC 远场条纹图像的自研轻量模型，包含深度可分离残差块、空间/通道门控和多尺度池化回归头。
   - 输入：单通道远场光强图。
   - 双光束输出：`[sin(phi), cos(phi)]`。
   - 7 光束输出：设置 `output_dim=12`，对应 6 路相对相位的 `sin/cos` 编码。
@@ -386,6 +389,7 @@ L_total = L_phase + lambda_phy * L_farfield
   - 记录每个模型的参数量、训练耗时、验证 RMSE、测试 RMSE、MAE 和逐通道 RMSE。
   - 支持 `--max-samples` 限制样本数，便于 CPU 环境下快速筛选结构。
   - 支持 `--full-dataset`、`--device cuda`、`--num-workers` 和 `--pin-memory`，便于 RTX 3060 上完整数据长训练。
+  - 支持 `--phase-loss mse|cyclic|cyclic_unit`，便于比较普通 MSE 与周期相位损失。
   - 支持 `--experiment-tag`，避免长训练结果覆盖快速筛选结果。
   - 自动保存最终 epoch checkpoint 和最佳验证 RMSE checkpoint，并在 CSV 中记录二者测试表现。
   - 输出结构消融汇总 CSV、每个模型的训练历史 CSV 和对比图。
@@ -421,6 +425,22 @@ L_total = L_phase + lambda_phy * L_farfield
 
 ```powershell
 .\scripts\run_cycle25_gpu_residual_physics.ps1 -Epochs 50 -BatchSize 32 -LearningRate 0.001 -LambdaPhy 0.1 -NumWorkers 2 -Seed 20260612
+```
+
+### `scripts/run_cycle26_gpu_cbc_lite.ps1`
+
+- 地址：`D:\CBC_AI\scripts\run_cycle26_gpu_cbc_lite.ps1`
+- 作用：在 RTX 3060 上训练项目自研 `cbc_lite_cnn + cyclic phase loss`。
+- 当前功能：
+  - 使用 `CBCPhaseLiteCNN`，不直接复用 MobileNetV3-Small。
+  - 默认运行完整 7 光束数据集。
+  - 默认参数为 `50 epoch`、`batch size=64`、`learning rate=0.001`、`seed=20260612`、`phase_loss=cyclic`。
+  - 输出最终 checkpoint 与最佳验证 checkpoint。
+  - 用于 Cycle 26 的文献启发创新模型验证。
+- 使用示例：
+
+```powershell
+.\scripts\run_cycle26_gpu_cbc_lite.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2 -Seed 20260612 -PhaseLoss cyclic
 ```
 
 ### `train/evaluate_seven_beam_noise_robustness.py`
