@@ -649,6 +649,8 @@ Cycle 25 补充：`residual_cnn + physics loss` 已完成一轮 GPU 结果回收
 
 Cycle 26 计划已调整为“文献启发的自研模型创新”。保留 Xie et al. 的周期相位损失思想，新增 `--phase-loss cyclic`；模型结构不照搬 MobileNetV3-Small，而采用项目自研 `cbc_lite_cnn`，包含深度可分离残差块、空间/通道门控和多尺度池化相位回归头。下一步在 RTX 3060 上运行 `scripts/run_cycle26_gpu_cbc_lite.ps1`，验证 `cbc_lite_cnn + cyclic phase loss` 是否优于当前残差与物理约束路线。
 
+Cycle 26 GPU 结果已回收：`cbc_lite_cnn` 分别使用 `mse`、`cyclic`、`cyclic_unit` 训练 50 epoch。最佳结果来自 `mse`，最佳 checkpoint 测试 RMSE 为 `1.219643 rad`；`cyclic` 为 `1.281704 rad`，`cyclic_unit` 为 `1.255836 rad`。三者均弱于当前 `residual_cnn_best` 和 `residual_cnn + physics loss`，因此 `cbc_lite_cnn` 暂不升级为论文主模型。下一步应在当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 路线上测试周期相位损失，而不是继续更换网络结构。
+
 ## 当前阶段性判断
 
 当前代码已经形成了较完整的双光束研究闭环：

@@ -129,3 +129,15 @@ cbc_lite_cnn + cyclic phase loss
 ```powershell
 .\scripts\run_cycle26_gpu_cbc_lite.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2 -Seed 20260612 -PhaseLoss cyclic_unit
 ```
+
+已完成结果：
+
+- `cbc_lite_cnn + mse`：最佳 checkpoint 测试 RMSE `1.219643 rad`。
+- `cbc_lite_cnn + cyclic`：最佳 checkpoint 测试 RMSE `1.281704 rad`。
+- `cbc_lite_cnn + cyclic_unit`：最佳 checkpoint 测试 RMSE `1.255836 rad`。
+
+当前判断：`cbc_lite_cnn` 暂不作为论文主模型。下一步更值得验证的是在当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 上接入周期相位损失：
+
+```powershell
+python train\train_seven_beam_physics_constrained_cnn.py --model-name residual_cnn --phase-loss cyclic --lambda-phy 0.05 --epochs 50 --batch-size 32 --learning-rate 0.001 --seed 20260612 --device cuda --num-workers 2 --model-path models\cycle27_residual_physics_cyclic_lambda005_50epoch.pth --metrics-path result\metrics\cycle27_residual_physics_cyclic_lambda005_50epoch_2026-06-10.csv --summary-path result\metrics\cycle27_residual_physics_cyclic_lambda005_50epoch_summary_2026-06-10.csv --figure-path result\figures\cycle27_residual_physics_cyclic_lambda005_50epoch_2026-06-10.png --no-plot
+```

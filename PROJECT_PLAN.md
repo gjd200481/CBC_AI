@@ -392,14 +392,17 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：文献启发但具有项目创新性的 `cbc_lite_cnn + cyclic phase loss` 候选模型结果。
 
+状态：已完成 `cbc_lite_cnn` 在 `mse`、`cyclic`、`cyclic_unit` 三种损失下的完整数据 50 epoch GPU 对比。最佳结果来自 `cbc_lite_cnn + mse`，最佳 checkpoint 测试 RMSE 为 `1.219643 rad`；`cyclic` 为 `1.281704 rad`，`cyclic_unit` 为 `1.255836 rad`。三者均弱于 `residual_cnn_best` 的 `0.992071 rad` 和 `residual_cnn + physics loss, lambda_phy=0.05` 的 `0.983128 rad`。当前结论是：保留 `cbc_lite_cnn` 作为负结果和创新探索记录，但不升级为论文主模型。记录见 `result/logs/cycle26_cbc_lite_50epoch_gpu_run_2026-06-10.md`。
+
 ### Cycle 27：2026-07-26 至 2026-07-27
 
-- 对 Cycle 23、25、26 的最佳 checkpoint 进行统一补偿效果评估。
-- 计算补偿前、普通 CNN、`residual_cnn_best`、`residual_cnn + physics loss`、`cbc_lite_cnn` 和理想相干的主瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE。
-- 判断相位 RMSE 改善是否能转化为真实远场补偿收益。
-- 确定论文主模型候选。
+- 优先验证 `residual_cnn + physics loss + cyclic phase loss`，判断周期相位损失是否应接入当前最优残差物理约束路线。
+- 使用 `lambda_phy=0.05` 作为第一候选，因为 Cycle 25 中该权重最佳。
+- 如结果优于 `0.983128 rad`，再进入统一补偿效果评估。
+- 若未优于当前最佳，则以 `residual_cnn + physics loss, lambda_phy=0.05` 作为下一阶段主模型候选。
+- 统一计算补偿前、普通 CNN、`residual_cnn_best`、`residual_cnn + physics loss` 和理想相干的主瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE。
 
-目标输出：候选模型补偿物理指标统一对比结果。
+目标输出：周期损失在最优残差物理约束路线上的验证结果，以及主模型候选的补偿物理指标统一对比。
 
 ### Cycle 28：2026-07-28 至 2026-07-29
 
