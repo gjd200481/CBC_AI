@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.data_utils import FarFieldPhaseDataset
-from train.models import SimplePhaseCNN
+from train.models import build_phase_model
 from train.phase_metrics import phase_metrics_from_sin_cos
 from train.physics_loss import FarFieldConsistencyLoss, SevenBeamFourierOptics
 from train.train_seven_beam_baseline import channel_rmse_from_sin_cos
@@ -27,9 +27,14 @@ def format_noise_tag(noise_sigma):
 
 
 def load_seven_beam_model(model_path, device):
-    """加载 12 维输出的 7 光束相位反演模型。"""
+    """加载 12 维输出的 7 光束相位反演模型。
+
+    旧 checkpoint 没有保存 model_name，默认按 simple_cnn 加载。
+    Cycle 21 之后的结构消融 checkpoint 会保存 model_name，可自动加载 residual_cnn。
+    """
     checkpoint = torch.load(model_path, map_location=device)
-    model = SimplePhaseCNN(image_size=160, output_dim=12).to(device)
+    model_name = checkpoint.get("model_name", "simple_cnn")
+    model = build_phase_model(model_name=model_name, image_size=160, output_dim=12).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return model

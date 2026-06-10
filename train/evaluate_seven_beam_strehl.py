@@ -74,7 +74,7 @@ def plot_results(detail_rows, summary_rows, example_images, figure_path):
     plt.title("Mean Strehl ratio")
 
     plt.subplot(2, 3, 2)
-    for state in ["before", "baseline_compensated", "physics_compensated"]:
+    for state in [state for state in states if state != "ideal"]:
         state_rows = [row for row in detail_rows if row["state"] == state]
         plt.scatter(
             [row["phase_rmse_rad"] for row in state_rows],
@@ -134,6 +134,8 @@ def main():
         type=Path,
         default=REPO_ROOT / "models" / "physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.pth",
     )
+    parser.add_argument("--candidate-model", type=Path, default=None)
+    parser.add_argument("--candidate-name", default="candidate_compensated")
     parser.add_argument("--max-samples", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-points", type=int, default=256)
@@ -177,6 +179,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     baseline_model = load_seven_beam_model(args.baseline_model, device)
     physics_model = load_seven_beam_model(args.physics_model, device)
+    candidate_model = None
+    if args.candidate_model is not None:
+        candidate_model = load_seven_beam_model(args.candidate_model, device)
 
     baseline_pred = predict_labels(
         model=baseline_model,
@@ -190,13 +195,27 @@ def main():
         batch_size=args.batch_size,
         device=device,
     )
+    candidate_pred = None
+    if candidate_model is not None:
+        candidate_pred = predict_labels(
+            model=candidate_model,
+            images=images,
+            batch_size=args.batch_size,
+            device=device,
+        )
 
     true_phases = decode_sin_cos(labels)
     baseline_phases = decode_sin_cos(baseline_pred)
     physics_phases = decode_sin_cos(physics_pred)
+    candidate_phases = None
+    if candidate_pred is not None:
+        candidate_phases = decode_sin_cos(candidate_pred)
 
     baseline_residual = wrap_phase_error(true_phases, baseline_phases)
     physics_residual = wrap_phase_error(true_phases, physics_phases)
+    candidate_residual = None
+    if candidate_phases is not None:
+        candidate_residual = wrap_phase_error(true_phases, candidate_phases)
     ideal_phases = np.zeros(6, dtype=np.float32)
 
     x_grid, y_grid = create_grid(num_points=args.num_points, window_size=args.window_size)
@@ -218,8 +237,10 @@ def main():
             "before": true_phases[index],
             "baseline_compensated": baseline_residual[index],
             "physics_compensated": physics_residual[index],
-            "ideal": ideal_phases,
         }
+        if candidate_residual is not None:
+            phase_sets[args.candidate_name] = candidate_residual[index]
+        phase_sets["ideal"] = ideal_phases
         for state, phases in phase_sets.items():
             farfield = farfield_crop_from_phases(
                 phases=phases,
@@ -248,8 +269,10 @@ def main():
         summarize_state(detail_rows, "before"),
         summarize_state(detail_rows, "baseline_compensated"),
         summarize_state(detail_rows, "physics_compensated"),
-        summarize_state(detail_rows, "ideal"),
     ]
+    if candidate_residual is not None:
+        summary_rows.append(summarize_state(detail_rows, args.candidate_name))
+    summary_rows.append(summarize_state(detail_rows, "ideal"))
 
     before_mean = summary_rows[0]["strehl_mean"]
     for row in summary_rows:

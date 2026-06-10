@@ -123,7 +123,8 @@ def plot_compensation_effect(summary_rows, example_images, figure_path):
     figure_path.parent.mkdir(parents=True, exist_ok=True)
 
     states = [row["state"] for row in summary_rows]
-    colors = ["#4B5563", "#2563EB", "#DC2626", "#059669"]
+    base_colors = ["#4B5563", "#2563EB", "#DC2626", "#7C3AED", "#059669"]
+    colors = [base_colors[index % len(base_colors)] for index in range(len(states))]
 
     metric_panels = [
         ("main_lobe_ratio", "Main-lobe energy ratio"),
@@ -190,6 +191,8 @@ def main():
         type=Path,
         default=REPO_ROOT / "models" / "physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.pth",
     )
+    parser.add_argument("--candidate-model", type=Path, default=None)
+    parser.add_argument("--candidate-name", default="candidate_compensated")
     parser.add_argument("--max-samples", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-points", type=int, default=256)
@@ -234,6 +237,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     baseline_model = load_seven_beam_model(args.baseline_model, device)
     physics_model = load_seven_beam_model(args.physics_model, device)
+    candidate_model = None
+    if args.candidate_model is not None:
+        candidate_model = load_seven_beam_model(args.candidate_model, device)
 
     baseline_pred = predict_labels(
         model=baseline_model,
@@ -247,10 +253,21 @@ def main():
         batch_size=args.batch_size,
         device=device,
     )
+    candidate_pred = None
+    if candidate_model is not None:
+        candidate_pred = predict_labels(
+            model=candidate_model,
+            images=images,
+            batch_size=args.batch_size,
+            device=device,
+        )
 
     true_phases = decode_sin_cos(labels)
     baseline_phases = decode_sin_cos(baseline_pred)
     physics_phases = decode_sin_cos(physics_pred)
+    candidate_phases = None
+    if candidate_pred is not None:
+        candidate_phases = decode_sin_cos(candidate_pred)
 
     phase_sets_by_state = {
         "before": true_phases,
@@ -258,6 +275,8 @@ def main():
         "physics_compensated": wrap_phase_error(true_phases, physics_phases),
         "ideal": np.zeros_like(true_phases),
     }
+    if candidate_phases is not None:
+        phase_sets_by_state[args.candidate_name] = wrap_phase_error(true_phases, candidate_phases)
 
     x_grid, y_grid = create_grid(num_points=args.num_points, window_size=args.window_size)
     main_lobe_mask = make_main_lobe_mask(
@@ -277,7 +296,10 @@ def main():
 
     detail_rows = []
     example_images = {}
-    states = ["before", "baseline_compensated", "physics_compensated", "ideal"]
+    states = ["before", "baseline_compensated", "physics_compensated"]
+    if candidate_phases is not None:
+        states.append(args.candidate_name)
+    states.append("ideal")
 
     for sample_index in range(len(images)):
         for state in states:

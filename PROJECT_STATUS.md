@@ -641,6 +641,8 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 
 补充判断：RTX 3060 的 50 epoch 复跑已完成，但最终 epoch 指标不理想。下一步仍然需要 3060，但训练目标应从“继续堆轮数”改为“保存最佳验证 checkpoint + 固定 baseline 随机种子做公平长训练”。当前不建议直接用 `residual_cnn` 替代论文主模型。
 
+最新补充：已合入 `cycle23_residual_best_50epoch` 结果。最佳验证 checkpoint 出现在 epoch 17，测试 RMSE 为 `0.992071 rad`，测试 MAE 为 `0.812456 rad`，首次优于当前普通 CNN baseline 和物理约束 CNN。最终 epoch 测试 RMSE 仍为 `1.269384 rad`，说明后续必须采用最佳验证 checkpoint 或早停策略，而不能使用最终 epoch。下一步应评估 `residual_cnn_best` 的主瓣能量占比、Strehl 比、合成效率和补偿后残余相位 RMSE。
+
 ## 当前阶段性判断
 
 当前代码已经形成了较完整的双光束研究闭环：

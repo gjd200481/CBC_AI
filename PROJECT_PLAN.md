@@ -351,13 +351,17 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：带最佳 checkpoint 的 7 光束候选结构公平长训练结果。
 
+状态：已完成 `residual_cnn` 最佳 checkpoint 50 epoch GPU 复跑。最终 epoch 测试 RMSE 为 `1.269384 rad`，仍不适合作为模型选择结果；最佳验证 checkpoint 出现在 epoch 17，测试 RMSE 为 `0.992071 rad`，相比普通 CNN baseline `1.02698 rad` 降低约 `3.40%`，相比物理约束 CNN `1.02269 rad` 降低约 `2.99%`。下一步应使用该最佳 checkpoint 权重计算主瓣能量占比、Strehl 比、合成效率和补偿后残余相位 RMSE。记录见 `result/logs/cycle23_residual_best_50epoch_gpu_run_2026-06-10.md`。
+
 ### Cycle 24：2026-07-20 至 2026-07-21
 
-- 撰写方法部分草稿。
-- 描述多束高斯光束建模、FFT 远场传播、相位 `sin/cos` 编码、CNN 结构和物理一致性损失。
-- 整理关键公式。
+- 将 `residual_cnn` 最佳 checkpoint 纳入 7 光束物理指标评估。
+- 计算补偿前、普通 CNN、物理约束 CNN、`residual_cnn_best`、理想相干的主瓣能量占比。
+- 计算对应 Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE。
+- 判断 `residual_cnn_best` 的相位 RMSE 改善是否能转化为远场补偿收益。
+- 若补偿指标也优于现有模型，将 `residual_cnn_best` 升级为论文候选主模型。
 
-目标输出：论文方法部分初稿。
+目标输出：`residual_cnn_best` 的 7 光束补偿物理指标评估结果。
 
 ### Cycle 25：2026-07-22 至 2026-07-23
 

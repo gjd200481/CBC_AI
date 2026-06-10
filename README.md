@@ -184,6 +184,7 @@ GPU 长训练准备：
 - `train/sweep_seven_beam_architecture.py` 已支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory` 和 `--experiment-tag`。
 - RTX 3060 已完成 `residual_cnn` 50 epoch 复跑，最终测试 RMSE 为 `1.319034 rad`，未优于当前普通 CNN 和物理约束 CNN。
 - 后续仍需要 3060，但重点改为保存最佳验证 checkpoint，并用 `seed=20260612` 做公平长训练对比。
+- 最新最佳 checkpoint 结果显示：`residual_cnn_best` 测试 RMSE 为 `0.992071 rad`，已低于普通 CNN 和物理约束 CNN。下一步需要验证它的主瓣能量、Strehl 比和合成效率是否同步提升。
 
 ## 项目文档
 

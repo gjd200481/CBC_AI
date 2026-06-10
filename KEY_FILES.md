@@ -414,6 +414,7 @@ L_total = L_phase + lambda_phy * L_farfield
 - 当前功能：
   - 加载 `baseline_cnn_main_clean_seven_beam_2026-06-08.pth`。
   - 加载 `physics_cnn_lambda_0.1_main_clean_seven_beam_2026-06-08.pth`。
+  - 可根据 checkpoint 中的 `model_name` 自动加载 `simple_cnn`、`wide_cnn` 或 `residual_cnn`。
   - 计算整体 RMSE、MAE、逐通道 RMSE 和远场重建 MSE。
   - 输出噪声强度-误差曲线。
 - 当前结论：
@@ -457,6 +458,7 @@ L_total = L_phase + lambda_phy * L_farfield
 - 当前功能：
   - 以理想相干远场峰值强度为基准。
   - 计算补偿前、普通 CNN 补偿后、物理约束 CNN 补偿后和理想相干状态的 Strehl 比。
+  - 支持 `--candidate-model` 和 `--candidate-name`，可将 `residual_cnn_best` 纳入 Strehl 对比。
   - 同时记录残余相位 RMSE。
   - 输出明细 CSV、汇总 CSV 和 Strehl 对比图。
 - 当前结论：
@@ -473,6 +475,7 @@ L_total = L_phase + lambda_phy * L_farfield
   - 加载 7 光束普通 CNN 和 `lambda_phy=0.1` 物理约束 CNN。
   - 使用预测相位作为补偿量，计算补偿后残余相位。
   - 统一评估补偿前、普通 CNN 补偿后、物理约束 CNN 补偿后和理想相干四种状态。
+  - 支持 `--candidate-model` 和 `--candidate-name`，可加入 `residual_cnn_best` 等候选模型。
   - 输出主瓣能量占比、旁瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE。
   - 保存明细 CSV、汇总 CSV 和综合对比图。
 - 当前结论：
