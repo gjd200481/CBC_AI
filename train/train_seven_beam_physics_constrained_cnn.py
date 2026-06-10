@@ -1,4 +1,5 @@
 import argparse
+import copy
 import csv
 import sys
 from pathlib import Path
@@ -14,10 +15,19 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.data_utils import build_dataloaders
-from train.models import SimplePhaseCNN
+from train.models import build_phase_model, count_parameters
 from train.phase_metrics import decode_sin_cos, phase_metrics_from_sin_cos, wrap_phase_error
 from train.physics_loss import FarFieldConsistencyLoss, SevenBeamFourierOptics
 from train.train_seven_beam_baseline import channel_rmse_from_sin_cos
+
+
+def resolve_device(device_name):
+    """根据命令行参数选择训练设备。"""
+    if device_name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device_name == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested, but torch.cuda.is_available() is False")
+    return torch.device(device_name)
 
 
 def save_history_csv(history, output_path):
@@ -287,6 +297,9 @@ def main():
     parser.add_argument("--val-ratio", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=20260613)
     parser.add_argument("--image-size", type=int, default=160)
+    parser.add_argument("--model-name", default="simple_cnn")
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--num-points", type=int, default=256)
     parser.add_argument("--window-size", type=float, default=10e-3)
     parser.add_argument("--waist", type=float, default=0.5e-3)
@@ -305,14 +318,20 @@ def main():
         val_ratio=args.val_ratio,
         seed=args.seed,
         expected_size=(args.image_size, args.image_size),
+        num_workers=args.num_workers,
     )
 
     output_dim = loaders["dataset"].labels.shape[1]
     if output_dim != 12:
         raise ValueError(f"Seven-beam labels should have 12 columns, got {output_dim}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SimplePhaseCNN(image_size=args.image_size, output_dim=output_dim).to(device)
+    device = resolve_device(args.device)
+    model = build_phase_model(
+        model_name=args.model_name,
+        image_size=args.image_size,
+        output_dim=output_dim,
+    ).to(device)
+    parameter_count = count_parameters(model)
 
     optics_model = SevenBeamFourierOptics(
         num_points=args.num_points,
@@ -331,8 +350,14 @@ def main():
     print("Splits:", loaders["splits"])
     print("Output dim:", output_dim)
     print("lambda_phy:", args.lambda_phy)
+    print("model_name:", args.model_name)
+    print("parameters:", parameter_count)
 
     history = []
+    best_epoch = 0
+    best_val_rmse = float("inf")
+    best_val_loss = float("inf")
+    best_state_dict = None
     for epoch in range(1, args.epochs + 1):
         train_metrics = train_one_epoch(
             model=model,
@@ -366,6 +391,11 @@ def main():
             "val_mae_deg": val_metrics["mae_deg"],
         }
         history.append(row)
+        if val_metrics["rmse_rad"] < best_val_rmse:
+            best_epoch = epoch
+            best_val_rmse = val_metrics["rmse_rad"]
+            best_val_loss = val_metrics["total_loss"]
+            best_state_dict = copy.deepcopy(model.state_dict())
 
         print(
             f"Epoch {epoch:03d} | "
@@ -386,6 +416,32 @@ def main():
     )
     channel_rmse = channel_rmse_from_sin_cos(pred_values, true_values)
 
+    best_checkpoint_metrics = {}
+    best_channel_rmse = None
+    best_model_path = args.model_path.with_name(args.model_path.stem + "_best" + args.model_path.suffix)
+    if best_state_dict is not None:
+        final_state_dict = copy.deepcopy(model.state_dict())
+        model.load_state_dict(best_state_dict)
+        best_test_metrics, best_pred_values, best_true_values = evaluate_model(
+            model=model,
+            data_loader=loaders["test"],
+            phase_loss_fn=phase_loss_fn,
+            farfield_loss_fn=farfield_loss_fn,
+            lambda_phy=args.lambda_phy,
+            device=device,
+        )
+        best_channel_rmse = channel_rmse_from_sin_cos(best_pred_values, best_true_values)
+        best_checkpoint_metrics = {
+            "best_checkpoint_test_rmse_rad": best_test_metrics["rmse_rad"],
+            "best_checkpoint_test_rmse_deg": best_test_metrics["rmse_deg"],
+            "best_checkpoint_test_mae_rad": best_test_metrics["mae_rad"],
+            "best_checkpoint_test_mae_deg": best_test_metrics["mae_deg"],
+            "best_checkpoint_total_loss": best_test_metrics["total_loss"],
+            "best_checkpoint_phase_loss": best_test_metrics["phase_loss"],
+            "best_checkpoint_farfield_loss": best_test_metrics["farfield_loss"],
+        }
+        model.load_state_dict(final_state_dict)
+
     args.model_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
@@ -400,28 +456,68 @@ def main():
             "label_path": str(args.label_path),
             "splits": loaders["splits"],
             "seed": args.seed,
-            "model_class": "SimplePhaseCNN",
+            "model_name": args.model_name,
+            "model_class": args.model_name,
+            "parameter_count": parameter_count,
+            "best_epoch": best_epoch,
+            "best_val_rmse_rad": best_val_rmse,
+            "best_val_total_loss": best_val_loss,
             "output_format": "[sin(phi_1), cos(phi_1), ..., sin(phi_6), cos(phi_6)]",
             "physics_model": "SevenBeamFourierOptics",
         },
         args.model_path,
     )
+    if best_state_dict is not None:
+        torch.save(
+            {
+                "model_state_dict": best_state_dict,
+                "optimizer_state_dict": optimizer.state_dict(),
+                "num_epochs": args.epochs,
+                "history": history,
+                "test_metrics": best_checkpoint_metrics,
+                "lambda_phy": args.lambda_phy,
+                "image_path": str(args.image_path),
+                "label_path": str(args.label_path),
+                "splits": loaders["splits"],
+                "seed": args.seed,
+                "model_name": args.model_name,
+                "model_class": args.model_name,
+                "parameter_count": parameter_count,
+                "best_epoch": best_epoch,
+                "best_val_rmse_rad": best_val_rmse,
+                "best_val_total_loss": best_val_loss,
+                "checkpoint_type": "best_validation_rmse",
+                "output_format": "[sin(phi_1), cos(phi_1), ..., sin(phi_6), cos(phi_6)]",
+                "physics_model": "SevenBeamFourierOptics",
+            },
+            best_model_path,
+        )
 
     save_history_csv(history, args.metrics_path)
 
     summary = {
         "lambda_phy": args.lambda_phy,
+        "model_name": args.model_name,
+        "parameter_count": parameter_count,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
         "train_samples": loaders["splits"]["train"],
         "val_samples": loaders["splits"]["val"],
         "test_samples": loaders["splits"]["test"],
+        "best_epoch": best_epoch,
+        "best_val_rmse_rad": best_val_rmse,
+        "best_val_total_loss": best_val_loss,
         **test_metrics,
+        **best_checkpoint_metrics,
     }
     for index, rmse in enumerate(channel_rmse, start=1):
         summary[f"channel_{index}_rmse_rad"] = float(rmse)
         summary[f"channel_{index}_rmse_deg"] = float(np.degrees(rmse))
+    if best_channel_rmse is not None:
+        for index, rmse in enumerate(best_channel_rmse, start=1):
+            summary[f"best_checkpoint_channel_{index}_rmse_rad"] = float(rmse)
+            summary[f"best_checkpoint_channel_{index}_rmse_deg"] = float(np.degrees(rmse))
     save_summary_csv(summary, args.summary_path)
 
     print("\nTest result:")
@@ -432,9 +528,14 @@ def main():
     print("Phase loss:", test_metrics["phase_loss"])
     print("Far-field loss:", test_metrics["farfield_loss"])
     print("Total loss:", test_metrics["total_loss"])
+    if best_checkpoint_metrics:
+        print("Best epoch:", best_epoch)
+        print("Best checkpoint RMSE(rad):", best_checkpoint_metrics["best_checkpoint_test_rmse_rad"])
+        print("Best checkpoint far-field loss:", best_checkpoint_metrics["best_checkpoint_farfield_loss"])
     for index, rmse in enumerate(channel_rmse, start=1):
         print(f"Channel {index} RMSE(rad): {rmse}")
     print("Model saved to:", args.model_path)
+    print("Best model saved to:", best_model_path)
     print("Metrics saved to:", args.metrics_path)
     print("Summary saved to:", args.summary_path)
 

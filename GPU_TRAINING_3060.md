@@ -74,3 +74,30 @@ models/cycle23_residual_best_50epoch_residual_cnn_seven_beam_best.pth
 - 训练曲线是否稳定下降，验证 RMSE 是否出现明显过拟合。
 
 如果 `residual_cnn` 完整数据长训练后 RMSE 明显低于 `simple_cnn`，后续可以将它作为论文主模型候选。
+
+## 7. 残差网络 + 物理约束
+
+当前 `residual_cnn_best` 是残差网络 + 相位监督损失，并没有加入傅里叶光学物理约束。若要验证“残差 + 物理约束”，在 RTX 3060 上运行：
+
+```powershell
+.\scripts\run_cycle25_gpu_residual_physics.ps1 -Epochs 50 -BatchSize 32 -LearningRate 0.001 -LambdaPhy 0.1 -NumWorkers 2 -Seed 20260612
+```
+
+该命令会训练：
+
+```text
+ResidualPhaseCNN + L_total = L_phase + lambda_phy * L_farfield
+```
+
+建议优先跑 `lambda_phy=0.1`。如果结果接近或优于 `residual_cnn_best`，再补跑：
+
+```powershell
+.\scripts\run_cycle25_gpu_residual_physics.ps1 -Epochs 50 -BatchSize 32 -LearningRate 0.001 -LambdaPhy 0.05 -NumWorkers 2 -Seed 20260612
+.\scripts\run_cycle25_gpu_residual_physics.ps1 -Epochs 50 -BatchSize 32 -LearningRate 0.001 -LambdaPhy 0.2 -NumWorkers 2 -Seed 20260612
+```
+
+判断时优先看：
+
+- `best_checkpoint_test_rmse_rad`
+- `best_checkpoint_farfield_loss`
+- 后续补偿评估中的主瓣能量占比、Strehl 比和合成效率

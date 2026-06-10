@@ -643,6 +643,8 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 
 最新补充：已合入 `cycle23_residual_best_50epoch` 结果。最佳验证 checkpoint 出现在 epoch 17，测试 RMSE 为 `0.992071 rad`，测试 MAE 为 `0.812456 rad`，首次优于当前普通 CNN baseline 和物理约束 CNN。最终 epoch 测试 RMSE 仍为 `1.269384 rad`，说明后续必须采用最佳验证 checkpoint 或早停策略，而不能使用最终 epoch。下一步应评估 `residual_cnn_best` 的主瓣能量占比、Strehl 比、合成效率和补偿后残余相位 RMSE。
 
+下一阶段建议已更新：可以尝试 `residual_cnn + physics loss`。当前 `residual_cnn_best` 只有残差结构，没有物理约束；`physics_cnn_lambda_0.1` 有物理约束，但没有残差结构。因此新实验应训练 `ResidualPhaseCNN + FarFieldConsistencyLoss`，重点比较 `best_checkpoint_test_rmse_rad`、远场 MSE、主瓣能量占比、Strehl 比和合成效率。该实验需要 RTX 3060。
+
 ## 当前阶段性判断
 
 当前代码已经形成了较完整的双光束研究闭环：

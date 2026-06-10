@@ -348,10 +348,11 @@ L_total = L_phase + lambda_phy * L_farfield
 - 作用：7 光束物理约束 CNN 训练入口。
 - 当前功能：
   - 默认读取 7 光束主静态数据集 `main_clean_seven_beam`。
-  - 使用 `SimplePhaseCNN(output_dim=12)` 输出 6 路相对相位的 sin/cos 编码。
+  - 支持 `--model-name simple_cnn` 或 `--model-name residual_cnn` 输出 6 路相对相位的 sin/cos 编码。
   - 使用 `SevenBeamFourierOptics` 根据预测相位重建 7 光束远场。
   - 总损失为 `L_total = L_phase + lambda_phy * L_farfield`。
   - 输出整体 RMSE、MAE、远场重建 MSE 和逐通道 RMSE。
+  - 保存最终 checkpoint 和最佳验证 RMSE checkpoint。
 - 当前结果：
   - 已用于 Cycle 13 训练 `lambda_phy=0.1` 的 7 光束物理约束模型。
   - 测试集 RMSE 为 `1.02269 rad`，略低于普通 CNN 的 `1.02698 rad`。
@@ -405,6 +406,21 @@ L_total = L_phase + lambda_phy * L_farfield
 
 ```powershell
 .\scripts\run_cycle22_gpu_residual.ps1 -Epochs 50 -BatchSize 64 -LearningRate 0.001 -NumWorkers 2
+```
+
+### `scripts/run_cycle25_gpu_residual_physics.ps1`
+
+- 地址：`D:\CBC_AI\scripts\run_cycle25_gpu_residual_physics.ps1`
+- 作用：在 RTX 3060 上训练 `residual_cnn + physics loss`。
+- 当前功能：
+  - 使用 `ResidualPhaseCNN`。
+  - 使用 `SevenBeamFourierOptics` 远场物理一致性损失。
+  - 默认 `lambda_phy=0.1`、`50 epoch`、`batch size=32`。
+  - 输出最终 checkpoint 与最佳验证 checkpoint。
+- 使用示例：
+
+```powershell
+.\scripts\run_cycle25_gpu_residual_physics.ps1 -Epochs 50 -BatchSize 32 -LearningRate 0.001 -LambdaPhy 0.1 -NumWorkers 2 -Seed 20260612
 ```
 
 ### `train/evaluate_seven_beam_noise_robustness.py`
