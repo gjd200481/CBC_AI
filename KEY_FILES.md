@@ -13,16 +13,15 @@
 ### `PROJECT_PLAN.md`
 
 - 地址：`D:\CBC_AI\PROJECT_PLAN.md`
-- 作用：项目总计划文件。
+- 作用：面向一区/二区期刊投稿目标的研究路线图。
 - 当前内容：
-  - 明确 2026 年 7 月底前的项目目标。
+  - 明确项目目标已调整为形成具备一区或二区投稿潜力的论文。
   - 将主线确定为“7 光束多路相干合成下基于傅里叶光学约束的 CNN 相位误差反演”。
-  - 按两天一个周期安排数据生成、模型训练、物理约束、鲁棒性实验、论文写作。
-  - 将此前的 `CNN + LSTM` 远场序列预测路线暂时降级为后续拓展方向。
-  - 将双光束实验定位为低维验证基线，后续主实验转向 7 光束。
+  - 以论文证据链组织后续任务：主模型补偿指标、周期损失验证、大规模数据、离焦图像和鲁棒训练。
+  - 说明历史 `cycleXX` 文件名仅作为实验批次编号保留，不再代表项目管理周期或时间约束。
 - 使用建议：
-  - 每完成一个周期后，在对应 Cycle 下补充“状态”。
-  - 每次修改研究路线或摘要后，应优先同步修改这个文件。
+  - 每次修改研究路线、目标期刊定位或论文主结论后，应优先同步修改这个文件。
+  - 新实验是否继续推进，以能否增强一区/二区论文证据链为判断标准。
 
 ### `KEY_FILES.md`
 
@@ -207,7 +206,7 @@
 - 作用：生成远场序列数据。
 - 当前状态：
   - 原本服务于 `CNN + LSTM` 未来相位预测路线。
-  - 新摘要下暂不作为 7 月底主线任务。
+  - 当前投稿主线暂不使用该动态序列路线。
 - 后续用途：
   - 如果论文后续需要扩展“动态扰动预测”或“闭环控制”，可以重新启用。
 
@@ -810,17 +809,18 @@ L_total = L_phase + lambda_phy * L_farfield
 ## 当前优先使用顺序
 
 1. 查看计划：`PROJECT_PLAN.md`
-2. 生成或复查数据：`simulation/static/generate_two_beam_dataset.py`
-3. 检查物理仿真逻辑：`simulation/common/two_beam_core.py`
-4. 查看主数据集记录：`result/logs/cycle03_static_dataset_2026-06-07.md`
-5. 进入下一步训练前，整理：`train/evaluate_two_beam.py`
-6. 评估模型时使用：`examples/demo_evaluate_two_beam_model.py`
+2. 查看当前论文初稿：`paper/CBC_AI_paper_draft_2026-06-10.md`
+3. 复查七光束主数据生成：`simulation/static/generate_seven_beam_dataset.py`
+4. 检查七光束物理约束：`train/physics_loss.py`
+5. 训练当前主线候选：`train/train_seven_beam_physics_constrained_cnn.py`
+6. 复查关键结果：`result/logs/`、`result/metrics/`、`result/figures/`
 7. 写论文背景时查：`paper/journals/chinese/README.md` 和 `paper/daedalus_packages/`
 
 ## 下一步建议
 
-按照新计划，下一步是 Cycle 04：
+围绕一区或二区投稿目标，下一步优先补强论文证据链：
 
-- 将 `Dataset`、`DataLoader`、相位解码、周期相位误差 RMSE 独立成可复用模块。
-- 让训练脚本支持命令行传入数据路径、模型路径、epoch、batch size 和随机种子。
-- 为后续普通 CNN baseline 和物理约束 CNN 共用同一套数据读取与评估函数。
+- 补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE。
+- 在当前最优残差物理约束路线中测试周期相位损失，而不是继续优先更换网络结构。
+- 设计更大规模七光束数据集和离焦图像数据集。
+- 将论文初稿改写为更接近正式期刊格式的版本。

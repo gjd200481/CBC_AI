@@ -1,6 +1,6 @@
 # CBC_AI
 
-本项目面向相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，当前主线是 **7 光束多路相干合成相位误差智能估计**。
+本项目面向相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，当前主线是 **7 光束多路相干合成相位误差智能估计**。项目目标已调整为形成一篇具备一区或二区期刊投稿潜力的研究论文，而不是按固定周期或截止日期推进。
 
 核心思路：
 
@@ -42,10 +42,10 @@ CNN 相位反演
 - 7 光束网络结构快速消融。
 - RTX 3060 长轮次训练准备。
 
-当前暂定 7 光束主实验物理损失权重为：
+当前最优 7 光束主线候选为：
 
 ```text
-lambda_phy = 0.1
+residual_cnn + physics loss, lambda_phy = 0.05, best checkpoint RMSE = 0.983128 rad
 ```
 
 ## 目录结构
@@ -92,7 +92,7 @@ CBC_AI/
 
 - `dataset/` 保存本地生成数据集，不提交 Git。
 - `models/` 保存本地模型权重，不提交 Git。
-- `result/` 默认忽略，但关键日志、CSV 和图会按周期强制提交。
+- `result/` 默认忽略，但关键日志、CSV 和图会按重要实验结果强制提交。
 - `examples/` 保存演示和快速推理脚本。
 - `simulation/static/legacy/` 保存早期验证脚本，不作为主训练入口。
 
@@ -192,7 +192,7 @@ GPU 长训练准备：
 
 ## 项目文档
 
-- `PROJECT_PLAN.md`：两天一个周期的项目计划。
+- `PROJECT_PLAN.md`：面向一区/二区投稿目标的研究路线图。
 - `PROJECT_STATUS.md`：当前进度、阶段性结论和下一步。
 - `KEY_FILES.md`：关键文件地址和作用说明。
 - `NAMING_CONVENTIONS.md`：目录和文件命名规范。

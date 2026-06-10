@@ -1,4 +1,4 @@
-# CBC_AI 项目任务目标与当前进度
+# CBC_AI 投稿目标与当前进度
 
 ## 项目总目标
 
@@ -28,11 +28,13 @@ FFT 得到重建远场
 相位监督损失 + 远场物理一致性损失
 ```
 
-项目希望在 2026 年 7 月底前完成 7 光束可复现实验代码、仿真数据集、普通 CNN baseline、物理约束 CNN、噪声和复杂扰动鲁棒性实验、关键评价指标与论文写作材料。
+项目目标已调整为形成一篇具备一区或二区期刊投稿潜力的研究论文。后续推进不再受固定日期或周期管理约束，而以论文证据链是否完整、实验是否可复现、创新点是否足够清晰为判断标准。
 
 ## 当前研究定位
 
-此前曾考虑使用 `CNN + LSTM` 做远场序列预测和未来相位预测，但根据新的摘要，当前主线已经调整为单帧远场光强到相位误差的反演。随后项目目标进一步从双光束升级为 7 光束多路相干合成。`CNN + LSTM` 动态预测暂时保留为后续拓展，不作为 7 月底前的主任务。
+此前曾考虑使用 `CNN + LSTM` 做远场序列预测和未来相位预测，但根据当前投稿目标，主线已经调整为单帧远场光强到相位误差的反演。随后项目目标进一步从双光束升级为 7 光束多路相干合成。`CNN + LSTM` 动态预测暂时保留为后续拓展，不作为当前论文主任务。
+
+说明：历史记录中的 `Cycle XX` 仅作为实验批次编号和结果索引保留，不再代表项目管理周期或时间约束。
 
 当前重点是证明：
 
@@ -415,241 +417,22 @@ result/logs/cycle08_lambda_sweep_2026-06-07.md
 result/metrics/cycle08_lambda_sweep_2026-06-07.csv
 ```
 
-## 当前正在进行的工作
+## 投稿导向的当前待办
 
-当前已完成 Cycle 09：探测器噪声鲁棒性实验。
+后续推进不再按固定周期展开，而以“是否增强一区/二区论文证据链”为准。当前优先级如下：
 
-目标：
+1. 补齐当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 的下游补偿物理指标，包括主瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和补偿后残余相位 RMSE。
+2. 在当前最优残差物理约束路线中测试周期相位损失，判断 `cyclic` 是否应接入主模型。
+3. 扩大七光束训练数据规模，测试 `1024 -> 5000 -> 10000` 样本时 RMSE 与补偿指标是否改善。
+4. 生成焦前/离焦强度图数据，与当前远场/焦平面图像对比，回应 Hou 和 Xie 等文献中关于非焦平面图像相位信息更丰富的结论。
+5. 进行噪声增强或稳健物理一致性训练，改善当前模型对探测器噪声不稳定的问题。
+6. 将 `paper/CBC_AI_paper_draft_2026-06-10.md` 继续打磨为正式期刊格式，补充英文摘要、图表、参考文献格式和投稿创新点。
 
-- 生成不同噪声强度下的远场数据。
-- 保持各噪声数据集使用同一组真实相位，保证对比公平。
-- 比较普通 CNN 和物理约束 CNN 在噪声增强时的误差变化。
-- 输出噪声强度与相位 RMSE、远场重建 MSE 的关系曲线。
+最新主线判断：
 
-计划测试噪声：
-
-```text
-noise_sigma = 0, 0.01, 0.03, 0.05, 0.08
-```
-
-新增脚本：
-
-```text
-simulation/static/generate_two_beam_noise_robustness_dataset.py
-train/evaluate_noise_robustness.py
-```
-
-实验结论：
-
-- 在 `noise=0.01, 0.03, 0.05` 下，物理约束 CNN 的相位 RMSE 低于普通 CNN。
-- 中等噪声下相对改善约 `10.60%` 到 `15.99%`。
-- 在 `noise=0.08` 下，物理约束 CNN 略差于普通 CNN，说明当前权重和模型存在噪声适用边界。
-
-记录文件：
-
-```text
-result/logs/cycle09_noise_robustness_2026-06-08.md
-result/metrics/cycle09_noise_robustness_2026-06-08.csv
-result/figures/cycle09_noise_robustness_2026-06-08.png
-```
-
-## 下一步计划
-
-### Cycle 09
-
-完成探测器噪声鲁棒性实验，得到：
-
-- `result/metrics/cycle09_noise_robustness_2026-06-08.csv`
-- `result/figures/cycle09_noise_robustness_2026-06-08.png`
-- `result/logs/cycle09_noise_robustness_2026-06-08.md`
-
-### Cycle 10
-
-已完成振幅失配扰动实验。
-
-测试设置：
-
-```text
-amplitude_1 = 1.0
-amplitude_2 ~ Uniform(1-r, 1+r)
-r = 0, 0.05, 0.1, 0.2, 0.3
-```
-
-实验结果：
-
-- 普通 CNN 在 `r=0.3` 时 RMSE 约 `0.004278 rad`。
-- 物理约束 CNN 在 `r=0.3` 时 RMSE 约 `0.004934 rad`。
-- 当前设置下两类模型都较稳定，但普通 CNN 更优。
-
-记录文件：
-
-```text
-result/logs/cycle10_amplitude_mismatch_2026-06-08.md
-result/metrics/cycle10_amplitude_mismatch_2026-06-08.csv
-result/figures/cycle10_amplitude_mismatch_2026-06-08.png
-```
-
-### Cycle 11
-
-已完成 7 光束基础仿真模块和 smoke 数据集。
-
-核心输出：
-
-- `simulation/common/multi_beam_core.py`
-- `simulation/static/generate_seven_beam_dataset.py`
-- `result/logs/cycle11_seven_beam_smoke_2026-06-08.md`
-
-### Cycle 12
-
-已完成 7 光束普通 CNN baseline。
-
-核心输出：
-
-- `train/train_seven_beam_baseline.py`
-- `result/logs/cycle12_seven_beam_baseline_2026-06-08.md`
-- `result/metrics/baseline_cnn_main_clean_seven_beam_summary_2026-06-08.csv`
-
-下一步进入 7 光束物理约束 CNN：将 `train/physics_loss.py` 从双光束扩展到 7 光束，根据 6 路预测相位重建 7 光束近场，并把重建远场与输入远场的误差加入总损失。
-
-### Cycle 13
-
-已完成 7 光束物理约束 CNN。
-
-核心输出：
-
-- `train/physics_loss.py` 中的 `SevenBeamFourierOptics`
-- `train/train_seven_beam_physics_constrained_cnn.py`
-- `result/logs/cycle13_seven_beam_physics_cnn_2026-06-08.md`
-
-当前判断：`lambda_phy=0.1` 可以带来小幅改善，但远场损失对总损失贡献偏小。下一步需要做 `lambda_phy` 权重消融，找到更适合 7 光束系统的物理约束强度。
-
-### Cycle 14
-
-已完成 7 光束物理损失权重消融。
-
-核心输出：
-
-- `train/sweep_seven_beam_lambda.py`
-- `result/logs/cycle14_seven_beam_lambda_sweep_2026-06-08.md`
-- `result/metrics/cycle14_seven_beam_lambda_sweep_2026-06-08.csv`
-- `result/metrics/cycle14_seven_beam_lambda_sweep_extended_2026-06-08.csv`
-
-当前判断：`lambda_phy=0.1` 是当前最合适的 7 光束主实验候选。下一步进入探测器噪声鲁棒性实验。
-
-### Cycle 15
-
-已完成 7 光束探测器噪声鲁棒性实验。
-
-核心输出：
-
-- `simulation/static/generate_seven_beam_noise_robustness_dataset.py`
-- `train/evaluate_seven_beam_noise_robustness.py`
-- `result/logs/cycle15_seven_beam_noise_robustness_2026-06-08.md`
-
-当前判断：当前物理约束模型在干净数据上略有优势，但对探测器噪声更敏感。后续如要突出鲁棒性，应考虑噪声增强训练或去噪物理一致性目标。
-
-### Cycle 16
-
-已完成 7 光束振幅失配与位置偏移鲁棒性实验。
-
-核心输出：
-
-- `simulation/static/generate_seven_beam_complex_robustness_dataset.py`
-- `train/evaluate_seven_beam_complex_robustness.py`
-- `result/logs/cycle16_seven_beam_complex_robustness_2026-06-08.md`
-
-当前判断：物理约束对振幅失配和位置偏移这类光束状态扰动有小幅增益，但对探测器噪声不稳定。后续论文应区分“成像噪声”和“光束物理状态扰动”两类鲁棒性。
-
-### Cycle 17
-
-已完成 7 光束主瓣能量占比与相位补偿效果评估。
-
-核心输出：
-
-- `train/evaluate_seven_beam_compensation_metrics.py`
-- `result/logs/cycle17_seven_beam_main_lobe_2026-06-09.md`
-- `result/metrics/cycle17_seven_beam_main_lobe_summary_2026-06-09.csv`
-
-当前判断：普通 CNN 和物理约束 CNN 都能显著提升主瓣能量占比，物理约束 CNN 略优，但距离理想相干仍有明显空间。
-
-### Cycle 18
-
-已完成 7 光束 Strehl 比评估。
-
-核心输出：
-
-- `train/evaluate_seven_beam_strehl.py`
-- `result/logs/cycle18_seven_beam_strehl_2026-06-09.md`
-- `result/metrics/cycle18_seven_beam_strehl_summary_2026-06-09.csv`
-
-当前判断：普通 CNN 和物理约束 CNN 都能显著提高 Strehl 比；物理约束 CNN 的 Strehl 比和残余相位 RMSE 略优于普通 CNN。
-
-### Cycle 19
-
-已完成 7 光束相位补偿综合效果实验。
-
-核心输出：
-
-- `train/evaluate_seven_beam_compensation_effect.py`
-- `result/logs/cycle19_seven_beam_compensation_effect_2026-06-09.md`
-- `result/metrics/cycle19_seven_beam_compensation_effect_summary_2026-06-09.csv`
-- `result/figures/cycle19_seven_beam_compensation_effect_2026-06-09.png`
-
-当前判断：普通 CNN 与物理约束 CNN 都能把 7 光束远场能量重新推向主瓣区域。物理约束 CNN 在主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE 上均略优于普通 CNN，可作为论文中“物理约束提升补偿结果物理可信度”的直接支撑。
-
-### Cycle 20
-
-已完成双光束/7 光束系统规模对比。
-
-核心输出：
-
-- `train/compare_system_scale.py`
-- `result/logs/cycle20_system_scale_comparison_2026-06-09.md`
-- `result/metrics/cycle20_system_scale_comparison_2026-06-09.csv`
-- `result/metrics/cycle20_system_scale_ratio_2026-06-09.csv`
-- `result/figures/cycle20_system_scale_comparison_2026-06-09.png`
-
-当前判断：双光束任务能验证代码链路和物理损失实现，但任务维度过低，不能充分体现多路 CBC 的通道耦合问题。7 光束系统虽然当前相位 RMSE 明显更高，但更能体现论文研究价值。下一周期应进入网络结构消融，重点降低 7 光束主系统的相位 RMSE。
-
-### Cycle 21
-
-已完成 7 光束网络结构快速消融。
-
-核心输出：
-
-- `train/models.py` 中新增 `WidePhaseCNN` 和 `ResidualPhaseCNN`
-- `train/sweep_seven_beam_architecture.py`
-- `result/logs/cycle21_seven_beam_architecture_ablation_2026-06-09.md`
-- `result/metrics/cycle21_seven_beam_architecture_ablation_2026-06-09.csv`
-- `result/figures/cycle21_seven_beam_architecture_ablation_2026-06-09.png`
-
-当前判断：小样本快速筛选中，`residual_cnn` 表现最好，但训练样本数和轮数都很小，只能说明残差结构值得继续验证。下一步应在完整 7 光束数据集上对 `residual_cnn` 做更长训练，并与 `simple_cnn` 30 epoch baseline 进行公平对比。
-
-### Cycle 22
-
-已完成 RTX 3060 长轮次训练准备。
-
-核心输出：
-
-- `GPU_TRAINING_3060.md`
-- `scripts/run_cycle22_gpu_residual.ps1`
-- `train/sweep_seven_beam_architecture.py` 的 GPU 长训练参数增强
-- `result/logs/cycle22_gpu_training_preparation_2026-06-09.md`
-- `result/metrics/cycle22_gpu_smoke_2026-06-09.csv`
-
-当前判断：项目已具备在 RTX 3060 电脑上进行 `residual_cnn` 完整数据 50/80 epoch 长训练的入口。长训练完成后，需要把结果 CSV、训练曲线图和本地模型权重带回当前项目，再继续做补偿效果评估和泛化实验。
-
-补充判断：RTX 3060 的 50 epoch 复跑已完成，但最终 epoch 指标不理想。下一步仍然需要 3060，但训练目标应从“继续堆轮数”改为“保存最佳验证 checkpoint + 固定 baseline 随机种子做公平长训练”。当前不建议直接用 `residual_cnn` 替代论文主模型。
-
-最新补充：已合入 `cycle23_residual_best_50epoch` 结果。最佳验证 checkpoint 出现在 epoch 17，测试 RMSE 为 `0.992071 rad`，测试 MAE 为 `0.812456 rad`，首次优于当前普通 CNN baseline 和物理约束 CNN。最终 epoch 测试 RMSE 仍为 `1.269384 rad`，说明后续必须采用最佳验证 checkpoint 或早停策略，而不能使用最终 epoch。下一步应评估 `residual_cnn_best` 的主瓣能量占比、Strehl 比、合成效率和补偿后残余相位 RMSE。
-
-下一阶段建议已更新：可以尝试 `residual_cnn + physics loss`。当前 `residual_cnn_best` 只有残差结构，没有物理约束；`physics_cnn_lambda_0.1` 有物理约束，但没有残差结构。因此新实验应训练 `ResidualPhaseCNN + FarFieldConsistencyLoss`，重点比较 `best_checkpoint_test_rmse_rad`、远场 MSE、主瓣能量占比、Strehl 比和合成效率。该实验需要 RTX 3060。
-
-Cycle 25 补充：`residual_cnn + physics loss` 已完成一轮 GPU 结果回收。当前最佳设置为 `lambda_phy=0.05`，最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，相比 `residual_cnn_best` 的 `0.992071 rad` 有小幅提升，但与 Xie et al. 2024 报道的约 `0.076π ≈ 0.239 rad` 仍有较大差距。
-
-Cycle 26 计划已调整为“文献启发的自研模型创新”。保留 Xie et al. 的周期相位损失思想，新增 `--phase-loss cyclic`；模型结构不照搬 MobileNetV3-Small，而采用项目自研 `cbc_lite_cnn`，包含深度可分离残差块、空间/通道门控和多尺度池化相位回归头。下一步在 RTX 3060 上运行 `scripts/run_cycle26_gpu_cbc_lite.ps1`，验证 `cbc_lite_cnn + cyclic phase loss` 是否优于当前残差与物理约束路线。
-
-Cycle 26 GPU 结果已回收：`cbc_lite_cnn` 分别使用 `mse`、`cyclic`、`cyclic_unit` 训练 50 epoch。最佳结果来自 `mse`，最佳 checkpoint 测试 RMSE 为 `1.219643 rad`；`cyclic` 为 `1.281704 rad`，`cyclic_unit` 为 `1.255836 rad`。三者均弱于当前 `residual_cnn_best` 和 `residual_cnn + physics loss`，因此 `cbc_lite_cnn` 暂不升级为论文主模型。下一步应在当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 路线上测试周期相位损失，而不是继续更换网络结构。
+- 当前最优相位 RMSE 来自 `residual_cnn + physics loss, lambda_phy=0.05`，最佳 checkpoint 测试 RMSE 为 `0.983128 rad`。
+- `cbc_lite_cnn` 与周期损失组合未超过残差物理约束路线，应作为负结果消融保留。
+- 历史 `cycleXX` 文件名仅作为实验批次和结果索引，不再作为项目管理方式。
 
 ## 当前阶段性判断
 
