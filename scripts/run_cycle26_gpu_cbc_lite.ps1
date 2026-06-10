@@ -9,10 +9,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$tag = "cycle26_xie_mobilenet_${PhaseLoss}_${Epochs}epoch"
+$tag = "cycle26_cbc_lite_${PhaseLoss}_${Epochs}epoch"
 
 python train\sweep_seven_beam_architecture.py `
-    --models mobilenetv3_small `
+    --models cbc_lite_cnn `
     --full-dataset `
     --epochs $Epochs `
     --batch-size $BatchSize `

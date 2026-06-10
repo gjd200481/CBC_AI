@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -140,135 +141,122 @@ class ResidualPhaseCNN(nn.Module):
         return self.regressor(x)
 
 
-class ConvBNActivation(nn.Sequential):
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size=3,
-        stride=1,
-        groups=1,
-        activation_layer=nn.ReLU,
-    ):
-        padding = (kernel_size - 1) // 2
-        super().__init__(
+class SpatialChannelGate(nn.Module):
+    """Light attention gate for CBC far-field fringe maps."""
+
+    def __init__(self, channels, reduction=4):
+        super().__init__()
+        hidden_channels = max(8, channels // reduction)
+        self.channel_gate = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, hidden_channels, kernel_size=1),
+            nn.GELU(),
+            nn.Conv2d(hidden_channels, channels, kernel_size=1),
+            nn.Sigmoid(),
+        )
+        self.spatial_gate = nn.Sequential(
+            nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x):
+        channel_weight = self.channel_gate(x)
+        avg_map = x.mean(dim=1, keepdim=True)
+        max_map = x.amax(dim=1, keepdim=True)
+        spatial_weight = self.spatial_gate(torch.cat([avg_map, max_map], dim=1))
+        return x * channel_weight * spatial_weight
+
+
+class SeparableResidualBlock(nn.Module):
+    """Depthwise-separable residual block with optional dilation."""
+
+    def __init__(self, input_channels, output_channels, stride=1, dilation=1):
+        super().__init__()
+        padding = dilation
+        self.block = nn.Sequential(
             nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
+                input_channels,
+                input_channels,
+                kernel_size=3,
                 stride=stride,
                 padding=padding,
-                groups=groups,
+                dilation=dilation,
+                groups=input_channels,
                 bias=False,
             ),
-            nn.BatchNorm2d(out_channels),
-            activation_layer(inplace=True),
+            nn.BatchNorm2d(input_channels),
+            nn.GELU(),
+            nn.Conv2d(input_channels, output_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(output_channels),
+            nn.GELU(),
+            SpatialChannelGate(output_channels),
         )
-
-
-class SqueezeExcitation(nn.Module):
-    def __init__(self, channels, squeeze_factor=4):
-        super().__init__()
-        squeeze_channels = max(8, channels // squeeze_factor)
-        self.pool = nn.AdaptiveAvgPool2d(1)
-        self.fc1 = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
-        self.relu = nn.ReLU(inplace=True)
-        self.fc2 = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
-        self.scale_activation = nn.Hardsigmoid(inplace=True)
-
-    def forward(self, x):
-        scale = self.pool(x)
-        scale = self.fc1(scale)
-        scale = self.relu(scale)
-        scale = self.fc2(scale)
-        scale = self.scale_activation(scale)
-        return x * scale
-
-
-class MobileNetV3Block(nn.Module):
-    def __init__(
-        self,
-        input_channels,
-        expanded_channels,
-        output_channels,
-        kernel_size,
-        stride,
-        use_se,
-        activation_layer,
-    ):
-        super().__init__()
-        layers = []
-        if expanded_channels != input_channels:
-            layers.append(
-                ConvBNActivation(
-                    input_channels,
-                    expanded_channels,
-                    kernel_size=1,
-                    activation_layer=activation_layer,
-                )
-            )
-        layers.append(
-            ConvBNActivation(
-                expanded_channels,
-                expanded_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                groups=expanded_channels,
-                activation_layer=activation_layer,
-            )
-        )
-        if use_se:
-            layers.append(SqueezeExcitation(expanded_channels))
-        layers.extend(
-            [
-                nn.Conv2d(expanded_channels, output_channels, kernel_size=1, bias=False),
+        if stride != 1 or input_channels != output_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(input_channels, output_channels, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(output_channels),
-            ]
-        )
-        self.block = nn.Sequential(*layers)
-        self.use_residual = stride == 1 and input_channels == output_channels
+            )
+        else:
+            self.shortcut = nn.Identity()
 
     def forward(self, x):
-        result = self.block(x)
-        if self.use_residual:
-            result = result + x
-        return result
+        return self.block(x) + self.shortcut(x)
 
 
-class MobileNetV3SmallPhaseCNN(nn.Module):
-    """MobileNetV3-Small inspired phase regressor for seven-beam CBC."""
+class MultiScalePhaseHead(nn.Module):
+    """Pool local and global fringe features before phase regression."""
+
+    def __init__(self, channels, output_dim):
+        super().__init__()
+        self.pool_sizes = (1, 2, 4)
+        feature_dim = channels * sum(size * size for size in self.pool_sizes)
+        self.regressor = nn.Sequential(
+            nn.Linear(feature_dim, 256),
+            nn.LayerNorm(256),
+            nn.GELU(),
+            nn.Dropout(p=0.15),
+            nn.Linear(256, 128),
+            nn.GELU(),
+            nn.Linear(128, output_dim),
+        )
+
+    def forward(self, x):
+        pooled = [
+            nn.functional.adaptive_avg_pool2d(x, (size, size)).flatten(1)
+            for size in self.pool_sizes
+        ]
+        return self.regressor(torch.cat(pooled, dim=1))
+
+
+class CBCPhaseLiteCNN(nn.Module):
+    """Project-specific lightweight CNN for seven-beam phase inversion."""
 
     def __init__(self, image_size=160, output_dim=2):
         super().__init__()
         del image_size
 
-        relu = nn.ReLU
-        hswish = nn.Hardswish
+        self.stem = nn.Sequential(
+            nn.Conv2d(1, 24, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.BatchNorm2d(24),
+            nn.GELU(),
+            nn.Conv2d(24, 24, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(24),
+            nn.GELU(),
+        )
         self.features = nn.Sequential(
-            ConvBNActivation(1, 16, kernel_size=3, stride=2, activation_layer=hswish),
-            MobileNetV3Block(16, 16, 16, kernel_size=3, stride=2, use_se=True, activation_layer=relu),
-            MobileNetV3Block(16, 72, 24, kernel_size=3, stride=2, use_se=False, activation_layer=relu),
-            MobileNetV3Block(24, 88, 24, kernel_size=3, stride=1, use_se=False, activation_layer=relu),
-            MobileNetV3Block(24, 96, 40, kernel_size=5, stride=2, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(40, 240, 40, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(40, 240, 40, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(40, 120, 48, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(48, 144, 48, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(48, 288, 96, kernel_size=5, stride=2, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(96, 576, 96, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            MobileNetV3Block(96, 576, 96, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
-            ConvBNActivation(96, 576, kernel_size=1, activation_layer=hswish),
+            SeparableResidualBlock(24, 32, stride=1, dilation=1),
+            SeparableResidualBlock(32, 32, stride=1, dilation=2),
+            SeparableResidualBlock(32, 48, stride=2, dilation=1),
+            SeparableResidualBlock(48, 48, stride=1, dilation=2),
+            SeparableResidualBlock(48, 80, stride=2, dilation=1),
+            SeparableResidualBlock(80, 80, stride=1, dilation=2),
+            SeparableResidualBlock(80, 128, stride=2, dilation=1),
+            SeparableResidualBlock(128, 128, stride=1, dilation=2),
         )
-        self.regressor = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(576, 256),
-            nn.Hardswish(inplace=True),
-            nn.Dropout(p=0.2),
-            nn.Linear(256, output_dim),
-        )
+        self.regressor = MultiScalePhaseHead(channels=128, output_dim=output_dim)
 
     def forward(self, x):
+        x = self.stem(x)
         x = self.features(x)
         return self.regressor(x)
 
@@ -279,7 +267,7 @@ def build_phase_model(model_name, image_size=160, output_dim=2):
         "simple_cnn": SimplePhaseCNN,
         "wide_cnn": WidePhaseCNN,
         "residual_cnn": ResidualPhaseCNN,
-        "mobilenetv3_small": MobileNetV3SmallPhaseCNN,
+        "cbc_lite_cnn": CBCPhaseLiteCNN,
     }
     if model_name not in model_classes:
         raise ValueError(f"Unknown model_name={model_name}. Expected one of {sorted(model_classes)}")
