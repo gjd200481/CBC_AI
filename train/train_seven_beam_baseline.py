@@ -6,7 +6,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +13,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.data_utils import build_dataloaders
-from train.models import SimplePhaseCNN
-from train.phase_metrics import decode_sin_cos, phase_metrics_from_sin_cos, wrap_phase_error
+from train.models import build_phase_model, count_parameters
+from train.phase_metrics import (
+    build_phase_loss,
+    decode_sin_cos,
+    phase_metrics_from_sin_cos,
+    wrap_phase_error,
+)
 
 
 def save_history_csv(history, output_path):
@@ -222,6 +226,13 @@ def main():
     parser.add_argument("--val-ratio", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=20260612)
     parser.add_argument("--image-size", type=int, default=160)
+    parser.add_argument("--model-name", default="simple_cnn")
+    parser.add_argument(
+        "--phase-loss",
+        choices=["mse", "cyclic", "cyclic_unit"],
+        default="mse",
+    )
+    parser.add_argument("--unit-loss-weight", type=float, default=0.0)
     parser.add_argument("--no-plot", action="store_true")
     args = parser.parse_args()
 
@@ -243,8 +254,16 @@ def main():
         raise ValueError(f"Seven-beam labels should have 12 columns, got {output_dim}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SimplePhaseCNN(image_size=args.image_size, output_dim=output_dim).to(device)
-    loss_fn = nn.MSELoss()
+    model = build_phase_model(
+        model_name=args.model_name,
+        image_size=args.image_size,
+        output_dim=output_dim,
+    ).to(device)
+    parameter_count = count_parameters(model)
+    loss_fn = build_phase_loss(
+        loss_name=args.phase_loss,
+        unit_weight=args.unit_loss_weight,
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     print("Using device:", device)
@@ -252,6 +271,9 @@ def main():
     print("Labels:", args.label_path)
     print("Splits:", loaders["splits"])
     print("Output dim:", output_dim)
+    print("model_name:", args.model_name)
+    print("phase_loss:", args.phase_loss)
+    print("parameters:", parameter_count)
 
     history = []
     for epoch in range(1, args.epochs + 1):
@@ -308,7 +330,11 @@ def main():
             "label_path": str(args.label_path),
             "splits": loaders["splits"],
             "seed": args.seed,
-            "model_class": "SimplePhaseCNN",
+            "model_name": args.model_name,
+            "model_class": args.model_name,
+            "phase_loss": args.phase_loss,
+            "unit_loss_weight": args.unit_loss_weight,
+            "parameter_count": parameter_count,
             "output_format": "[sin(phi_1), cos(phi_1), ..., sin(phi_6), cos(phi_6)]",
         },
         args.model_path,
@@ -317,6 +343,10 @@ def main():
     save_history_csv(history, args.metrics_path)
 
     summary = {
+        "model_name": args.model_name,
+        "phase_loss": args.phase_loss,
+        "unit_loss_weight": args.unit_loss_weight,
+        "parameter_count": parameter_count,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 
 
 def decode_sin_cos(values):
@@ -73,3 +74,67 @@ def phase_metrics_from_sin_cos(pred_values, true_values):
         "mean_error_rad": mean_error,
         "mean_error_deg": float(np.degrees(mean_error)),
     }
+
+
+def _split_and_normalize_sin_cos(values, eps=1e-8):
+    if values.shape[-1] % 2 != 0:
+        raise ValueError(f"Last dimension must be even, got {values.shape[-1]}")
+
+    sin_values = values[..., 0::2]
+    cos_values = values[..., 1::2]
+    norm = torch.sqrt(sin_values**2 + cos_values**2 + eps)
+    return sin_values / norm, cos_values / norm
+
+
+def cyclic_phase_loss_from_sin_cos(pred_values, true_values, eps=1e-8):
+    """Xie-style periodic phase loss for [sin(phi), cos(phi)] targets.
+
+    The paper uses 2 - 2*cos(theta - phi). With sin/cos labels this is the
+    same as 2 - 2*(sin(theta)sin(phi) + cos(theta)cos(phi)).
+    """
+    pred_sin, pred_cos = _split_and_normalize_sin_cos(pred_values, eps=eps)
+    true_sin, true_cos = _split_and_normalize_sin_cos(true_values, eps=eps)
+    cos_delta = pred_sin * true_sin + pred_cos * true_cos
+    cos_delta = torch.clamp(cos_delta, min=-1.0, max=1.0)
+    return torch.mean(2.0 - 2.0 * cos_delta)
+
+
+def unit_circle_loss_from_sin_cos(pred_values):
+    """Keep raw network outputs close to valid sin/cos pairs."""
+    if pred_values.shape[-1] % 2 != 0:
+        raise ValueError(f"Last dimension must be even, got {pred_values.shape[-1]}")
+    sin_values = pred_values[..., 0::2]
+    cos_values = pred_values[..., 1::2]
+    return torch.mean((sin_values**2 + cos_values**2 - 1.0) ** 2)
+
+
+class CyclicPhaseLoss(nn.Module):
+    """Periodic phase loss with an optional unit-circle regularizer."""
+
+    def __init__(self, unit_weight=0.0, eps=1e-8):
+        super().__init__()
+        self.unit_weight = unit_weight
+        self.eps = eps
+
+    def forward(self, pred_values, true_values):
+        loss = cyclic_phase_loss_from_sin_cos(
+            pred_values=pred_values,
+            true_values=true_values,
+            eps=self.eps,
+        )
+        if self.unit_weight > 0:
+            loss = loss + self.unit_weight * unit_circle_loss_from_sin_cos(pred_values)
+        return loss
+
+
+def build_phase_loss(loss_name="mse", unit_weight=0.0):
+    """Build supervised phase loss by name."""
+    if loss_name == "mse":
+        return nn.MSELoss()
+    if loss_name == "cyclic":
+        return CyclicPhaseLoss(unit_weight=unit_weight)
+    if loss_name == "cyclic_unit":
+        if unit_weight == 0.0:
+            unit_weight = 0.01
+        return CyclicPhaseLoss(unit_weight=unit_weight)
+    raise ValueError("Unknown phase loss: " f"{loss_name}")

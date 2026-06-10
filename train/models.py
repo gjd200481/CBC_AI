@@ -140,12 +140,146 @@ class ResidualPhaseCNN(nn.Module):
         return self.regressor(x)
 
 
+class ConvBNActivation(nn.Sequential):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=3,
+        stride=1,
+        groups=1,
+        activation_layer=nn.ReLU,
+    ):
+        padding = (kernel_size - 1) // 2
+        super().__init__(
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                groups=groups,
+                bias=False,
+            ),
+            nn.BatchNorm2d(out_channels),
+            activation_layer(inplace=True),
+        )
+
+
+class SqueezeExcitation(nn.Module):
+    def __init__(self, channels, squeeze_factor=4):
+        super().__init__()
+        squeeze_channels = max(8, channels // squeeze_factor)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc1 = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
+        self.relu = nn.ReLU(inplace=True)
+        self.fc2 = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
+        self.scale_activation = nn.Hardsigmoid(inplace=True)
+
+    def forward(self, x):
+        scale = self.pool(x)
+        scale = self.fc1(scale)
+        scale = self.relu(scale)
+        scale = self.fc2(scale)
+        scale = self.scale_activation(scale)
+        return x * scale
+
+
+class MobileNetV3Block(nn.Module):
+    def __init__(
+        self,
+        input_channels,
+        expanded_channels,
+        output_channels,
+        kernel_size,
+        stride,
+        use_se,
+        activation_layer,
+    ):
+        super().__init__()
+        layers = []
+        if expanded_channels != input_channels:
+            layers.append(
+                ConvBNActivation(
+                    input_channels,
+                    expanded_channels,
+                    kernel_size=1,
+                    activation_layer=activation_layer,
+                )
+            )
+        layers.append(
+            ConvBNActivation(
+                expanded_channels,
+                expanded_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                groups=expanded_channels,
+                activation_layer=activation_layer,
+            )
+        )
+        if use_se:
+            layers.append(SqueezeExcitation(expanded_channels))
+        layers.extend(
+            [
+                nn.Conv2d(expanded_channels, output_channels, kernel_size=1, bias=False),
+                nn.BatchNorm2d(output_channels),
+            ]
+        )
+        self.block = nn.Sequential(*layers)
+        self.use_residual = stride == 1 and input_channels == output_channels
+
+    def forward(self, x):
+        result = self.block(x)
+        if self.use_residual:
+            result = result + x
+        return result
+
+
+class MobileNetV3SmallPhaseCNN(nn.Module):
+    """MobileNetV3-Small inspired phase regressor for seven-beam CBC."""
+
+    def __init__(self, image_size=160, output_dim=2):
+        super().__init__()
+        del image_size
+
+        relu = nn.ReLU
+        hswish = nn.Hardswish
+        self.features = nn.Sequential(
+            ConvBNActivation(1, 16, kernel_size=3, stride=2, activation_layer=hswish),
+            MobileNetV3Block(16, 16, 16, kernel_size=3, stride=2, use_se=True, activation_layer=relu),
+            MobileNetV3Block(16, 72, 24, kernel_size=3, stride=2, use_se=False, activation_layer=relu),
+            MobileNetV3Block(24, 88, 24, kernel_size=3, stride=1, use_se=False, activation_layer=relu),
+            MobileNetV3Block(24, 96, 40, kernel_size=5, stride=2, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(40, 240, 40, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(40, 240, 40, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(40, 120, 48, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(48, 144, 48, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(48, 288, 96, kernel_size=5, stride=2, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(96, 576, 96, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            MobileNetV3Block(96, 576, 96, kernel_size=5, stride=1, use_se=True, activation_layer=hswish),
+            ConvBNActivation(96, 576, kernel_size=1, activation_layer=hswish),
+        )
+        self.regressor = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(576, 256),
+            nn.Hardswish(inplace=True),
+            nn.Dropout(p=0.2),
+            nn.Linear(256, output_dim),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        return self.regressor(x)
+
+
 def build_phase_model(model_name, image_size=160, output_dim=2):
     """按名称构建相位反演网络，便于训练脚本做结构消融。"""
     model_classes = {
         "simple_cnn": SimplePhaseCNN,
         "wide_cnn": WidePhaseCNN,
         "residual_cnn": ResidualPhaseCNN,
+        "mobilenetv3_small": MobileNetV3SmallPhaseCNN,
     }
     if model_name not in model_classes:
         raise ValueError(f"Unknown model_name={model_name}. Expected one of {sorted(model_classes)}")

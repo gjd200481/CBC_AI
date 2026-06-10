@@ -8,7 +8,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 
 
@@ -18,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from train.data_utils import FarFieldPhaseDataset, split_dataset
 from train.models import build_phase_model, count_parameters
+from train.phase_metrics import build_phase_loss
 from train.train_seven_beam_baseline import (
     channel_rmse_from_sin_cos,
     evaluate_model,
@@ -62,7 +62,10 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         output_dim=output_dim,
     ).to(device)
     parameter_count = count_parameters(model)
-    loss_fn = nn.MSELoss()
+    loss_fn = build_phase_loss(
+        loss_name=args.phase_loss,
+        unit_weight=args.unit_loss_weight,
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     history = []
@@ -145,6 +148,8 @@ def train_one_model(model_name, args, loaders, output_dim, device):
     save_history_csv(history, history_path)
     summary = {
         "model_name": model_name,
+        "phase_loss": args.phase_loss,
+        "unit_loss_weight": args.unit_loss_weight,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
@@ -177,6 +182,8 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         torch.save(
             {
                 "model_name": model_name,
+                "phase_loss": args.phase_loss,
+                "unit_loss_weight": args.unit_loss_weight,
                 "model_state_dict": model.state_dict(),
                 "summary": summary,
                 "history": history,
@@ -188,6 +195,8 @@ def train_one_model(model_name, args, loaders, output_dim, device):
             torch.save(
                 {
                     "model_name": model_name,
+                    "phase_loss": args.phase_loss,
+                    "unit_loss_weight": args.unit_loss_weight,
                     "model_state_dict": best_state_dict,
                     "summary": summary,
                     "history": history,
@@ -200,6 +209,8 @@ def train_one_model(model_name, args, loaders, output_dim, device):
 
     row = {
         "model_name": model_name,
+        "phase_loss": args.phase_loss,
+        "unit_loss_weight": args.unit_loss_weight,
         "parameter_count": parameter_count,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
@@ -362,6 +373,12 @@ def main():
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--phase-loss",
+        choices=["mse", "cyclic", "cyclic_unit"],
+        default="mse",
+    )
+    parser.add_argument("--unit-loss-weight", type=float, default=0.0)
     parser.add_argument("--train-ratio", type=float, default=0.7)
     parser.add_argument("--val-ratio", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=20260621)
@@ -414,6 +431,7 @@ def main():
     print("Total samples used:", loaders["total_samples"])
     print("Splits:", loaders["splits"])
     print("Output dim:", output_dim)
+    print("phase_loss:", args.phase_loss)
 
     summary_rows = []
     histories = {}

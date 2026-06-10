@@ -7,7 +7,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +15,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from train.data_utils import build_dataloaders
 from train.models import build_phase_model, count_parameters
-from train.phase_metrics import decode_sin_cos, phase_metrics_from_sin_cos, wrap_phase_error
+from train.phase_metrics import (
+    build_phase_loss,
+    decode_sin_cos,
+    phase_metrics_from_sin_cos,
+    wrap_phase_error,
+)
 from train.physics_loss import FarFieldConsistencyLoss, SevenBeamFourierOptics
 from train.train_seven_beam_baseline import channel_rmse_from_sin_cos
 
@@ -298,6 +302,12 @@ def main():
     parser.add_argument("--seed", type=int, default=20260613)
     parser.add_argument("--image-size", type=int, default=160)
     parser.add_argument("--model-name", default="simple_cnn")
+    parser.add_argument(
+        "--phase-loss",
+        choices=["mse", "cyclic", "cyclic_unit"],
+        default="mse",
+    )
+    parser.add_argument("--unit-loss-weight", type=float, default=0.0)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--num-points", type=int, default=256)
@@ -341,7 +351,10 @@ def main():
         crop_size=args.image_size,
     ).to(device)
     farfield_loss_fn = FarFieldConsistencyLoss(optics_model=optics_model, loss_type="mse")
-    phase_loss_fn = nn.MSELoss()
+    phase_loss_fn = build_phase_loss(
+        loss_name=args.phase_loss,
+        unit_weight=args.unit_loss_weight,
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     print("Using device:", device)
@@ -351,6 +364,7 @@ def main():
     print("Output dim:", output_dim)
     print("lambda_phy:", args.lambda_phy)
     print("model_name:", args.model_name)
+    print("phase_loss:", args.phase_loss)
     print("parameters:", parameter_count)
 
     history = []
@@ -458,6 +472,8 @@ def main():
             "seed": args.seed,
             "model_name": args.model_name,
             "model_class": args.model_name,
+            "phase_loss": args.phase_loss,
+            "unit_loss_weight": args.unit_loss_weight,
             "parameter_count": parameter_count,
             "best_epoch": best_epoch,
             "best_val_rmse_rad": best_val_rmse,
@@ -482,6 +498,8 @@ def main():
                 "seed": args.seed,
                 "model_name": args.model_name,
                 "model_class": args.model_name,
+                "phase_loss": args.phase_loss,
+                "unit_loss_weight": args.unit_loss_weight,
                 "parameter_count": parameter_count,
                 "best_epoch": best_epoch,
                 "best_val_rmse_rad": best_val_rmse,
@@ -498,6 +516,8 @@ def main():
     summary = {
         "lambda_phy": args.lambda_phy,
         "model_name": args.model_name,
+        "phase_loss": args.phase_loss,
+        "unit_loss_weight": args.unit_loss_weight,
         "parameter_count": parameter_count,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
