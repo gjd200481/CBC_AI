@@ -1,6 +1,6 @@
 # CBC_AI
 
-本项目面向相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，当前主线是 **7 光束多路相干合成相位误差智能估计**。项目目标已调整为形成一篇具备一区或二区期刊投稿潜力的研究论文，而不是按固定周期或截止日期推进。
+本项目面向相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，当前主线是 **7 光束多路相干合成相位误差智能估计**。项目目标已调整为形成一篇具备一区或二区期刊投稿潜力的研究论文；项目恢复 `Cycle` 管理方式，但 `Cycle` 只用于任务分割和实验批次记录，不绑定日期或硬性截止时间。
 
 核心思路：
 
@@ -188,11 +188,11 @@ GPU 长训练准备：
 - `residual_cnn + physics loss` 已进入下一轮验证，当前 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，说明物理约束与残差结构组合有小幅收益。
 - 根据 Xie et al. 2024 的启发，项目已新增周期相位损失 `--phase-loss cyclic`，但不照搬 MobileNetV3-Small；新的候选模型为自研 `cbc_lite_cnn`，面向 CBC 远场条纹图像设计。
 - RTX 3060 已完成 `cbc_lite_cnn` 的 `mse`、`cyclic`、`cyclic_unit` 三轮 50 epoch 对比。最佳结果为 `cbc_lite_cnn + mse`，测试 RMSE `1.219643 rad`，未优于残差物理约束路线。
-- 下一步建议在当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 上测试 `--phase-loss cyclic`，而不是继续更换网络结构。
+- 下一步按无时间约束 Cycle 推进：Cycle 27 补齐当前最优模型的补偿物理指标，Cycle 28 在残差物理约束路线上测试周期相位损失，Cycle 29/30 分别验证数据规模和离焦图像路线。
 
 ## 项目文档
 
-- `PROJECT_PLAN.md`：面向一区/二区投稿目标的研究路线图。
+- `PROJECT_PLAN.md`：面向一区/二区投稿目标的研究路线图和无时间约束 Cycle 任务规划。
 - `PROJECT_STATUS.md`：当前进度、阶段性结论和下一步。
 - `KEY_FILES.md`：关键文件地址和作用说明。
 - `NAMING_CONVENTIONS.md`：目录和文件命名规范。

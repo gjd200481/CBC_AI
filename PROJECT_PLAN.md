@@ -2,7 +2,9 @@
 
 ## 项目总目标
 
-本项目的目标不再按固定周期或截止日期推进，而是以形成一篇具备一区或二区期刊投稿潜力的研究论文为导向，围绕多路相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，建立一套可复现、可解释、具有物理约束特征的深度学习方法。
+本项目的目标不再按固定日期或截止日期推进，而是以形成一篇具备一区或二区期刊投稿潜力的研究论文为导向，围绕多路相干光束合成（Coherent Beam Combining, CBC）中的相位误差反演问题，建立一套可复现、可解释、具有物理约束特征的深度学习方法。
+
+项目恢复 `Cycle` 管理方式，但 `Cycle` 只表示任务分割单元，不再绑定天数、日期或硬性截止时间。每个 Cycle 以是否产出可复现实验、论文图表、指标表或明确负结果为完成标准。
 
 当前论文主线为：
 
@@ -136,72 +138,170 @@ L_total = L_phase + lambda_phy * L_farfield
 
 结论：当前 `cbc_lite_cnn` 不作为论文主模型；周期损失需要在残差物理约束主线上重新验证。
 
-## 面向一区/二区论文的待完成关键任务
+## 无时间约束 Cycle 任务规划
 
-### A. 补齐主模型物理补偿指标
+从下一阶段开始，项目恢复 Cycle 管理，但 Cycle 只用于拆分任务和记录实验批次。每个 Cycle 都应包含：
 
-优先级：最高。
+- 研究目的：本 Cycle 要回答的论文问题。
+- 主要任务：需要修改的代码、运行的实验或整理的文档。
+- 产出文件：日志、CSV、图、模型或论文段落。
+- 完成标准：能否支持论文中的一个明确结论。
+- 后续判断：继续推进、调整路线或作为负结果保留。
 
-需要对当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 计算：
+### Cycle 27：补齐当前主模型补偿指标
 
-- 主瓣能量占比。
-- Strehl 比。
-- 合成效率。
-- 峰值旁瓣比。
-- 补偿后残余相位 RMSE。
+研究目的：验证 `residual_cnn + physics loss, lambda_phy=0.05` 的相位 RMSE 改善是否能转化为下游远场补偿质量提升。
 
-目标：证明相位 RMSE 改善不仅是数值指标改善，也能转化为远场合成质量提升。
+主要任务：
 
-### B. 在最优主线上验证周期损失
+- 找到当前最优 `residual_cnn + physics loss, lambda_phy=0.05` 的 best checkpoint 和对应配置。
+- 复用或扩展 `train/evaluate_seven_beam_compensation_effect.py`。
+- 计算主瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和补偿后残余相位 RMSE。
+- 与普通 CNN、首版物理约束 CNN、`residual_cnn_best` 做统一表格对比。
 
-优先级：高。
+产出文件：
 
-不再优先更换模型结构，而是在当前最优主线上测试：
+- `result/logs/cycle27_residual_physics_compensation_*.md`
+- `result/metrics/cycle27_residual_physics_compensation_*.csv`
+- `result/figures/cycle27_residual_physics_compensation_*.png`
 
-```text
-ResidualPhaseCNN + FarFieldConsistencyLoss + cyclic phase loss
-```
+完成标准：论文中可以明确说明“当前最优相位 RMSE 模型是否同步改善补偿物理指标”。
 
-目标：判断 Xie et al. 的周期损失思想是否能在本项目数据与物理约束框架中带来实际收益。
+### Cycle 28：在最优主线上验证周期相位损失
 
-### C. 扩大数据规模与加入离焦图像
+研究目的：判断 Xie et al. 的周期相位损失思想是否能在本项目的残差物理约束路线中带来收益。
 
-优先级：高。
+主要任务：
 
-当前七光束主数据集只有 `1024` 个样本，明显不足以支撑高水平期刊的强结论。后续应比较：
+- 将 `--phase-loss cyclic` 和 `--phase-loss cyclic_unit` 接入 `ResidualPhaseCNN + FarFieldConsistencyLoss` 训练流程。
+- 固定数据集、随机种子、epoch、batch size 和 `lambda_phy=0.05`。
+- 与当前 `mse + physics` 结果进行公平对比。
+- 记录最佳 checkpoint 与最终 epoch 的差异。
 
-- `1024`
-- `5000`
-- `10000`
-- 更大规模数据集
+产出文件：
 
-同时应生成焦前/离焦强度图，与焦平面远场图做对比，回应 Hou 和 Xie 等文献中关于非焦平面相位信息更丰富的结论。
+- `result/logs/cycle28_residual_physics_cyclic_*.md`
+- `result/metrics/cycle28_residual_physics_cyclic_*.csv`
+- `result/figures/cycle28_residual_physics_cyclic_*.png`
 
-### D. 噪声增强与鲁棒训练
+完成标准：明确判断 `cyclic` 是否进入论文主模型；若不提升，则作为高价值负结果写入消融分析。
 
-优先级：中高。
+### Cycle 29：七光束数据规模扩展实验
 
-当前物理约束模型对振幅失配和位置偏移有一定泛化收益，但对探测器噪声不天然鲁棒。后续需要：
+研究目的：判断当前 RMSE 偏高是否主要受限于 1024 样本数据规模。
 
-- 噪声增强训练。
-- 混合干净/噪声数据训练。
-- 去噪或稳健远场一致性损失。
-- 在噪声、振幅、位置偏移三类扰动下统一评价。
+主要任务：
 
-### E. 形成论文图表体系
+- 生成或复查 `5000`、`10000` 样本七光束数据集。
+- 使用同一训练脚本和同一模型路线比较不同数据规模。
+- 记录训练耗时、验证 RMSE、测试 RMSE、远场 MSE 和补偿指标。
 
-优先级：中高。
+产出文件：
 
-建议论文主图包括：
+- `dataset/seven_beam/main_clean_5000/`
+- `dataset/seven_beam/main_clean_10000/`
+- `result/logs/cycle29_dataset_scale_*.md`
+- `result/metrics/cycle29_dataset_scale_*.csv`
 
-1. 七光束阵列与远场仿真流程图。
-2. 相位监督 + 傅里叶物理约束训练框架图。
-3. 双光束/七光束任务规模对比图。
-4. 主要模型 RMSE 对比图。
-5. 主模型补偿前后远场图样。
-6. 主瓣能量、Strehl 比、合成效率柱状图。
-7. 噪声、振幅失配、位置偏移鲁棒性曲线。
-8. 负结果消融图：`cbc_lite_cnn` 与周期损失对比。
+完成标准：得到“扩大数据是否显著改善七光束相位反演”的定量结论。
+
+### Cycle 30：焦前/离焦图像数据路线
+
+研究目的：验证非焦平面强度图是否比当前焦平面远场图包含更稳定的相位信息。
+
+主要任务：
+
+- 在七光束仿真中加入焦前/离焦传播距离参数。
+- 生成同一组相位对应的焦平面、焦前和离焦图像。
+- 训练同一网络结构，比较不同输入平面的 RMSE 和补偿指标。
+- 与 Hou、Xie 等文献中的“非焦平面图像更适合相位识别”结论对齐讨论。
+
+产出文件：
+
+- `simulation/static/generate_seven_beam_defocus_dataset.py`
+- `result/logs/cycle30_defocus_input_*.md`
+- `result/metrics/cycle30_defocus_input_*.csv`
+- `result/figures/cycle30_defocus_input_*.png`
+
+完成标准：判断离焦输入是否应成为论文主线创新点。
+
+### Cycle 31：噪声增强与稳健训练
+
+研究目的：改善当前物理约束模型对探测器噪声不稳定的问题。
+
+主要任务：
+
+- 设计干净/噪声混合训练集。
+- 比较训练时噪声增强、测试时噪声扰动和振幅/位置扰动的泛化表现。
+- 尝试稳健远场一致性损失或噪声权重策略。
+- 输出统一鲁棒性曲线。
+
+产出文件：
+
+- `result/logs/cycle31_noise_augmented_training_*.md`
+- `result/metrics/cycle31_noise_augmented_training_*.csv`
+- `result/figures/cycle31_noise_augmented_training_*.png`
+
+完成标准：给出“物理约束 + 噪声增强是否能提高鲁棒性”的可发表结论。
+
+### Cycle 32：论文主图与表格定稿
+
+研究目的：把已有实验转化为正式论文图表证据链。
+
+主要任务：
+
+- 统一图表风格、坐标轴、图例和单位。
+- 汇总模型 RMSE、MAE、远场 MSE、主瓣能量、Strehl 比、合成效率等指标。
+- 制作论文主图：
+  1. 七光束阵列与仿真流程。
+  2. 物理约束训练框架。
+  3. 模型性能对比。
+  4. 补偿前后远场图样。
+  5. 鲁棒性曲线。
+  6. 负结果消融。
+
+产出文件：
+
+- `paper/figures/`
+- `paper/tables/`
+- `result/logs/cycle32_paper_figures_*.md`
+
+完成标准：论文初稿可以直接引用主图和主表。
+
+### Cycle 33：论文初稿升级为投稿稿
+
+研究目的：把当前中文阶段性初稿升级为接近期刊投稿格式的论文稿。
+
+主要任务：
+
+- 重写摘要、引言、方法、实验、讨论和结论。
+- 增加英文标题、英文摘要和关键词。
+- 加强与 Hou、Mills、Xie 等文献的差异化讨论。
+- 将负结果写成合理消融，而不是简单失败记录。
+
+产出文件：
+
+- `paper/CBC_AI_manuscript_draft_*.md`
+- `paper/references.bib` 或参考文献清单
+
+完成标准：形成可以继续翻译、排版或投给目标期刊模板的论文稿。
+
+### Cycle 34：投稿目标期刊筛选与补实验清单
+
+研究目的：根据目标期刊要求反向检查论文缺口。
+
+主要任务：
+
+- 筛选 3 到 5 个一区/二区候选期刊。
+- 比较栏目范围、图表要求、创新性要求和数据可用性要求。
+- 根据目标期刊审稿标准整理必须补做的实验。
+
+产出文件：
+
+- `paper/journal_target_list_*.md`
+- `paper/revision_checklist_*.md`
+
+完成标准：确定优先投稿方向和下一轮补实验清单。
 
 ## 论文主线建议
 
@@ -219,13 +319,11 @@ ResidualPhaseCNN + FarFieldConsistencyLoss + cyclic phase loss
 
 ## 文件管理说明
 
-历史文件名中的 `cycleXX` 仅作为实验批次编号和结果索引保留，不再代表项目管理周期或时间约束。后续新增实验可以继续沿用已有文件命名规范，也可以使用更具语义的实验名；项目推进以论文质量和关键证据链是否完整为准。
+历史文件名中的 `cycleXX` 继续作为实验批次编号和结果索引保留。后续恢复使用 Cycle 管理任务，但每个 Cycle 只代表一个任务包，不绑定天数、日期或硬性截止时间；项目推进以论文质量和关键证据链是否完整为准。
 
 ## 下一步建议
 
-1. 优先补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的补偿物理指标。
-2. 运行 `ResidualPhaseCNN + FarFieldConsistencyLoss + cyclic phase loss` 对比实验。
-3. 设计更大规模七光束数据集和离焦图像数据集。
-4. 将 `paper/CBC_AI_paper_draft_2026-06-10.md` 改写为更接近正式期刊格式的论文稿。
-5. 根据目标期刊要求补充英文摘要、图表、参考文献格式和创新点表述。
-
+1. 先执行 Cycle 27，补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的补偿物理指标。
+2. 再执行 Cycle 28，在当前最优残差物理约束路线中测试周期相位损失。
+3. Cycle 29 与 Cycle 30 分别处理数据规模和离焦图像两个可能显著降低 RMSE 的方向。
+4. Cycle 31 到 Cycle 34 面向鲁棒性、论文图表、投稿稿和目标期刊筛选。
