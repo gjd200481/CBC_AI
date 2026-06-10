@@ -32,13 +32,13 @@ python simulation\static\generate_seven_beam_dataset.py --num-samples 1024 --noi
 优先跑残差 CNN：
 
 ```powershell
-python train\sweep_seven_beam_architecture.py --models residual_cnn --full-dataset --epochs 50 --batch-size 64 --learning-rate 0.001 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle22_residual_full_50epoch --history-dir result\metrics\cycle22_residual_full_50epoch --summary-csv result\metrics\cycle22_residual_full_50epoch_2026-06-09.csv --figure-path result\figures\cycle22_residual_full_50epoch_2026-06-09.png
+python train\sweep_seven_beam_architecture.py --models residual_cnn --full-dataset --epochs 50 --batch-size 64 --learning-rate 0.001 --seed 20260612 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle23_residual_best_50epoch --history-dir result\metrics\cycle23_residual_best_50epoch --summary-csv result\metrics\cycle23_residual_best_50epoch_2026-06-10.csv --figure-path result\figures\cycle23_residual_best_50epoch_2026-06-10.png
 ```
 
 如果显存充足，可以尝试：
 
 ```powershell
-python train\sweep_seven_beam_architecture.py --models residual_cnn --full-dataset --epochs 80 --batch-size 96 --learning-rate 0.001 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle22_residual_full_80epoch --history-dir result\metrics\cycle22_residual_full_80epoch --summary-csv result\metrics\cycle22_residual_full_80epoch_2026-06-09.csv --figure-path result\figures\cycle22_residual_full_80epoch_2026-06-09.png
+python train\sweep_seven_beam_architecture.py --models residual_cnn --full-dataset --epochs 80 --batch-size 96 --learning-rate 0.0003 --seed 20260612 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle23_residual_best_80epoch_lr3e4 --history-dir result\metrics\cycle23_residual_best_80epoch_lr3e4 --summary-csv result\metrics\cycle23_residual_best_80epoch_lr3e4_2026-06-10.csv --figure-path result\figures\cycle23_residual_best_80epoch_lr3e4_2026-06-10.png
 ```
 
 ## 4. 公平对比命令
@@ -46,7 +46,7 @@ python train\sweep_seven_beam_architecture.py --models residual_cnn --full-datas
 如果时间允许，建议同样训练 `simple_cnn`，用于和 Cycle 12 的普通 CNN baseline 做结构公平对比：
 
 ```powershell
-python train\sweep_seven_beam_architecture.py --models simple_cnn residual_cnn --full-dataset --epochs 50 --batch-size 64 --learning-rate 0.001 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle22_arch_full_50epoch --history-dir result\metrics\cycle22_arch_full_50epoch --summary-csv result\metrics\cycle22_arch_full_50epoch_2026-06-09.csv --figure-path result\figures\cycle22_arch_full_50epoch_2026-06-09.png
+python train\sweep_seven_beam_architecture.py --models simple_cnn residual_cnn --full-dataset --epochs 50 --batch-size 64 --learning-rate 0.001 --seed 20260612 --device cuda --num-workers 2 --pin-memory --experiment-tag cycle23_arch_fair_50epoch --history-dir result\metrics\cycle23_arch_fair_50epoch --summary-csv result\metrics\cycle23_arch_fair_50epoch_2026-06-10.csv --figure-path result\figures\cycle23_arch_fair_50epoch_2026-06-10.png
 ```
 
 ## 5. 结果带回本项目
@@ -54,11 +54,12 @@ python train\sweep_seven_beam_architecture.py --models simple_cnn residual_cnn -
 长训练结束后，重点保留以下文件：
 
 ```text
-result/metrics/cycle22_residual_full_50epoch_2026-06-09.csv
-result/metrics/cycle22_residual_full_50epoch/residual_cnn_history.csv
-result/metrics/cycle22_residual_full_50epoch/residual_cnn_summary.csv
-result/figures/cycle22_residual_full_50epoch_2026-06-09.png
-models/cycle22_residual_full_50epoch_residual_cnn_seven_beam.pth
+result/metrics/cycle23_residual_best_50epoch_2026-06-10.csv
+result/metrics/cycle23_residual_best_50epoch/residual_cnn_history.csv
+result/metrics/cycle23_residual_best_50epoch/residual_cnn_summary.csv
+result/figures/cycle23_residual_best_50epoch_2026-06-10.png
+models/cycle23_residual_best_50epoch_residual_cnn_seven_beam.pth
+models/cycle23_residual_best_50epoch_residual_cnn_seven_beam_best.pth
 ```
 
 其中 `models/*.pth` 不提交 Git，但需要保留在本地用于后续补偿效果评估。
@@ -68,6 +69,7 @@ models/cycle22_residual_full_50epoch_residual_cnn_seven_beam.pth
 优先看：
 
 - `rmse_rad` 是否低于当前 7 光束普通 CNN baseline：`1.02698 rad`。
+- `best_checkpoint_test_rmse_rad` 是否低于当前 7 光束普通 CNN baseline：`1.02698 rad`。
 - 逐通道 RMSE 是否比 `simple_cnn` 更均衡。
 - 训练曲线是否稳定下降，验证 RMSE 是否出现明显过拟合。
 

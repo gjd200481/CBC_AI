@@ -1,4 +1,5 @@
 import argparse
+import copy
 import csv
 import sys
 import time
@@ -65,6 +66,10 @@ def train_one_model(model_name, args, loaders, output_dim, device):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     history = []
+    best_epoch = 0
+    best_val_rmse = float("inf")
+    best_val_loss = float("inf")
+    best_state_dict = None
     start_time = time.perf_counter()
     for epoch in range(1, args.epochs + 1):
         train_loss = train_one_epoch(
@@ -91,6 +96,11 @@ def train_one_model(model_name, args, loaders, output_dim, device):
                 "val_mae_deg": val_metrics["mae_deg"],
             }
         )
+        if val_metrics["rmse_rad"] < best_val_rmse:
+            best_epoch = epoch
+            best_val_rmse = val_metrics["rmse_rad"]
+            best_val_loss = val_metrics["loss"]
+            best_state_dict = copy.deepcopy(model.state_dict())
         print(
             f"{model_name} | epoch {epoch:03d}/{args.epochs} | "
             f"train={train_loss:.6f} | val_rmse={val_metrics['rmse_rad']:.6f}"
@@ -109,6 +119,28 @@ def train_one_model(model_name, args, loaders, output_dim, device):
     history_path = args.history_dir / f"{model_tag}_history.csv"
     summary_path = args.history_dir / f"{model_tag}_summary.csv"
     model_path = args.model_dir / f"{args.experiment_tag}_{model_tag}_seven_beam.pth"
+    best_model_path = args.model_dir / f"{args.experiment_tag}_{model_tag}_seven_beam_best.pth"
+
+    best_checkpoint_metrics = {}
+    best_channel_rmse = None
+    if best_state_dict is not None:
+        final_state_dict = copy.deepcopy(model.state_dict())
+        model.load_state_dict(best_state_dict)
+        best_metrics, best_pred_values, best_true_values = evaluate_model(
+            model=model,
+            data_loader=loaders["test"],
+            loss_fn=loss_fn,
+            device=device,
+        )
+        best_channel_rmse = channel_rmse_from_sin_cos(best_pred_values, best_true_values)
+        best_checkpoint_metrics = {
+            "best_checkpoint_test_rmse_rad": best_metrics["rmse_rad"],
+            "best_checkpoint_test_rmse_deg": best_metrics["rmse_deg"],
+            "best_checkpoint_test_mae_rad": best_metrics["mae_rad"],
+            "best_checkpoint_test_mae_deg": best_metrics["mae_deg"],
+            "best_checkpoint_test_loss": best_metrics["loss"],
+        }
+        model.load_state_dict(final_state_dict)
 
     save_history_csv(history, history_path)
     summary = {
@@ -121,6 +153,9 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "parameter_count": parameter_count,
         "model_saved": not args.no_save_model,
         "train_seconds": train_seconds,
+        "best_epoch": best_epoch,
+        "best_val_rmse_rad": best_val_rmse,
+        "best_val_loss": best_val_loss,
         "train_samples": loaders["splits"]["train"],
         "val_samples": loaders["splits"]["val"],
         "test_samples": loaders["splits"]["test"],
@@ -131,6 +166,7 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "mean_error_rad": test_metrics["mean_error_rad"],
         "mean_error_deg": test_metrics["mean_error_deg"],
         "loss": test_metrics["loss"],
+        **best_checkpoint_metrics,
     }
     for index, rmse in enumerate(channel_rmse, start=1):
         summary[f"channel_{index}_rmse_rad"] = float(rmse)
@@ -144,9 +180,23 @@ def train_one_model(model_name, args, loaders, output_dim, device):
                 "model_state_dict": model.state_dict(),
                 "summary": summary,
                 "history": history,
+                "checkpoint_type": "final_epoch",
             },
             model_path,
         )
+        if best_state_dict is not None:
+            torch.save(
+                {
+                    "model_name": model_name,
+                    "model_state_dict": best_state_dict,
+                    "summary": summary,
+                    "history": history,
+                    "best_epoch": best_epoch,
+                    "best_val_rmse_rad": best_val_rmse,
+                    "checkpoint_type": "best_validation_rmse",
+                },
+                best_model_path,
+            )
 
     row = {
         "model_name": model_name,
@@ -158,6 +208,7 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "sample_scope": "full" if args.full_dataset else f"first_{args.max_samples}",
         "model_saved": not args.no_save_model,
         "train_seconds": train_seconds,
+        "best_epoch": best_epoch,
         "train_samples": loaders["splits"]["train"],
         "val_samples": loaders["splits"]["val"],
         "test_samples": loaders["splits"]["test"],
@@ -167,13 +218,19 @@ def train_one_model(model_name, args, loaders, output_dim, device):
         "test_mae_deg": test_metrics["mae_deg"],
         "test_loss": test_metrics["loss"],
         "best_val_rmse_rad": min(item["val_rmse_rad"] for item in history),
+        "best_val_loss": best_val_loss,
         "final_val_rmse_rad": history[-1]["val_rmse_rad"],
         "history_path": str(history_path),
         "summary_path": str(summary_path),
         "model_path": str(model_path),
+        "best_model_path": str(best_model_path),
+        **best_checkpoint_metrics,
     }
     for index, rmse in enumerate(channel_rmse, start=1):
         row[f"channel_{index}_rmse_rad"] = float(rmse)
+    if best_channel_rmse is not None:
+        for index, rmse in enumerate(best_channel_rmse, start=1):
+            row[f"best_checkpoint_channel_{index}_rmse_rad"] = float(rmse)
     return row, history
 
 
@@ -371,10 +428,20 @@ def main():
         summary_rows.append(row)
         histories[model_name] = history
 
-    best_row = min(summary_rows, key=lambda row: row["test_rmse_rad"])
+    best_row = min(
+        summary_rows,
+        key=lambda row: row.get("best_checkpoint_test_rmse_rad", row["test_rmse_rad"]),
+    )
     for row in summary_rows:
-        row["is_best_by_test_rmse"] = row["model_name"] == best_row["model_name"]
-        row["rmse_gap_to_best_rad"] = row["test_rmse_rad"] - best_row["test_rmse_rad"]
+        row["selection_rmse_rad"] = row.get(
+            "best_checkpoint_test_rmse_rad",
+            row["test_rmse_rad"],
+        )
+        row["is_best_by_selection_rmse"] = row["model_name"] == best_row["model_name"]
+        row["rmse_gap_to_best_rad"] = row["selection_rmse_rad"] - best_row.get(
+            "best_checkpoint_test_rmse_rad",
+            best_row["test_rmse_rad"],
+        )
 
     save_rows(summary_rows, args.summary_csv)
     plot_architecture_results(summary_rows, histories, args.figure_path)
@@ -383,7 +450,7 @@ def main():
     print(
         "Best model:",
         best_row["model_name"],
-        f"RMSE={best_row['test_rmse_rad']:.6f} rad",
+        f"RMSE={best_row.get('best_checkpoint_test_rmse_rad', best_row['test_rmse_rad']):.6f} rad",
     )
 
 

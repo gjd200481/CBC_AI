@@ -245,6 +245,16 @@ result/metrics/cycle22_gpu_smoke/
 result/figures/cycle22_gpu_smoke_2026-06-09.png
 ```
 
+随后已从 RTX 3060 复跑分支合入 `residual_cnn` 完整数据 50 epoch 结果。该模型最终测试 RMSE 为 `1.319034 rad`，未优于当前 7 光束普通 CNN baseline 的 `1.02698 rad` 和物理约束 CNN 的 `1.02269 rad`。不过训练过程中最优验证 RMSE 为 `0.973325 rad`，低于最终验证 RMSE `1.219996 rad`，说明后期可能存在过拟合或训练不稳定，需要保存最佳验证 checkpoint 后重新评估。记录文件：
+
+```text
+result/logs/cycle22_residual_full_50epoch_gpu_rerun_2026-06-10.md
+result/metrics/cycle22_residual_full_50epoch_2026-06-09.csv
+result/metrics/cycle22_residual_full_50epoch/residual_cnn_history.csv
+result/metrics/cycle22_residual_full_50epoch/residual_cnn_summary.csv
+result/figures/cycle22_residual_full_50epoch_2026-06-10.png
+```
+
 ### 4. 数据读取与相位指标模块
 
 已完成可复用训练基础模块：
@@ -628,6 +638,8 @@ result/figures/cycle10_amplitude_mismatch_2026-06-08.png
 - `result/metrics/cycle22_gpu_smoke_2026-06-09.csv`
 
 当前判断：项目已具备在 RTX 3060 电脑上进行 `residual_cnn` 完整数据 50/80 epoch 长训练的入口。长训练完成后，需要把结果 CSV、训练曲线图和本地模型权重带回当前项目，再继续做补偿效果评估和泛化实验。
+
+补充判断：RTX 3060 的 50 epoch 复跑已完成，但最终 epoch 指标不理想。下一步仍然需要 3060，但训练目标应从“继续堆轮数”改为“保存最佳验证 checkpoint + 固定 baseline 随机种子做公平长训练”。当前不建议直接用 `residual_cnn` 替代论文主模型。
 
 ## 当前阶段性判断
 

@@ -182,6 +182,8 @@ GPU 长训练准备：
 - 已新增 [GPU_TRAINING_3060.md](GPU_TRAINING_3060.md)，给出 RTX 3060 上运行 `residual_cnn` 完整数据 50/80 epoch 的命令。
 - 已新增 `scripts/run_cycle22_gpu_residual.ps1`，可在 GPU 电脑上直接启动长训练。
 - `train/sweep_seven_beam_architecture.py` 已支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory` 和 `--experiment-tag`。
+- RTX 3060 已完成 `residual_cnn` 50 epoch 复跑，最终测试 RMSE 为 `1.319034 rad`，未优于当前普通 CNN 和物理约束 CNN。
+- 后续仍需要 3060，但重点改为保存最佳验证 checkpoint，并用 `seed=20260612` 做公平长训练对比。
 
 ## 项目文档
 

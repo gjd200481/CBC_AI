@@ -386,6 +386,7 @@ L_total = L_phase + lambda_phy * L_farfield
   - 支持 `--max-samples` 限制样本数，便于 CPU 环境下快速筛选结构。
   - 支持 `--full-dataset`、`--device cuda`、`--num-workers` 和 `--pin-memory`，便于 RTX 3060 上完整数据长训练。
   - 支持 `--experiment-tag`，避免长训练结果覆盖快速筛选结果。
+  - 自动保存最终 epoch checkpoint 和最佳验证 RMSE checkpoint，并在 CSV 中记录二者测试表现。
   - 输出结构消融汇总 CSV、每个模型的训练历史 CSV 和对比图。
 - 当前结论：
   - 96 样本、2 epoch 快速筛选中，`residual_cnn` 测试 RMSE 为 `1.709031 rad`，是三者中最低。
@@ -397,8 +398,9 @@ L_total = L_phase + lambda_phy * L_farfield
 - 作用：第 22 周期新增的 RTX 3060 长训练启动脚本。
 - 当前功能：
   - 默认运行 `residual_cnn` 完整 7 光束数据训练。
-  - 默认参数为 `50 epoch`、`batch size=64`、`learning rate=0.001`、`num_workers=2`。
-  - 自动设置结果文件名为 `cycle22_residual_full_<epoch>epoch`。
+  - 默认参数为 `50 epoch`、`batch size=64`、`learning rate=0.001`、`seed=20260612`、`num_workers=2`。
+  - 自动设置结果文件名为 `cycle23_residual_best_<epoch>epoch`。
+  - 训练脚本会同时保存最终 epoch 权重和最佳验证 RMSE 权重。
 - 使用示例：
 
 ```powershell

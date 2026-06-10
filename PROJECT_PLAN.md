@@ -339,19 +339,17 @@ L_total = L_phase + lambda_phy * L_farfield
 
 目标输出：7 光束残差 CNN 完整数据长训练准备版本。
 
-状态：已完成 GPU 长训练准备。`train/sweep_seven_beam_architecture.py` 已支持完整数据、CUDA 设备、DataLoader 加速参数和实验标签；新增 `GPU_TRAINING_3060.md` 与 `scripts/run_cycle22_gpu_residual.ps1`。本地 CPU smoke 使用 24 样本、1 epoch 验证通过，`residual_cnn` 测试 RMSE 为 `1.812770 rad`，该结果仅用于流程检查，不作为论文性能结论。记录见 `result/logs/cycle22_gpu_training_preparation_2026-06-09.md`。
+状态：已完成 GPU 长训练准备，并已回收 RTX 3060 上的 `residual_cnn` 完整数据 50 epoch 复跑结果。复跑测试 RMSE 为 `1.319034 rad`，未优于当前 7 光束普通 CNN baseline `1.02698 rad` 和物理约束 CNN `1.02269 rad`。但训练过程中最优验证 RMSE 曾达到 `0.973325 rad`，提示需要保存最佳验证 checkpoint，并使用同一随机种子做公平长训练对比。记录见 `result/logs/cycle22_gpu_training_preparation_2026-06-09.md` 和 `result/logs/cycle22_residual_full_50epoch_gpu_rerun_2026-06-10.md`。
 
 ### Cycle 23：2026-07-18 至 2026-07-19
 
-- 整理论文核心图表。
-- 生成：
-  - 仿真模型示意图。
-  - CNN + 物理约束训练流程图。
-  - 远场输入与重建远场对比图。
-  - 噪声鲁棒性曲线。
-  - 相位 RMSE、主瓣能量、Strehl 比总表。
+- 修正长训练策略，保存最佳验证 RMSE 对应的 checkpoint。
+- 使用与 7 光束 baseline 相同的随机种子 `20260612` 做公平对比。
+- 在 RTX 3060 上优先复跑 `residual_cnn` 50 epoch。
+- 如时间允许，同设置复跑 `simple_cnn residual_cnn` 50 epoch 公平结构对比。
+- 对比最终 epoch 与最佳验证 checkpoint 的测试 RMSE。
 
-目标输出：论文结果图候选集。
+目标输出：带最佳 checkpoint 的 7 光束候选结构公平长训练结果。
 
 ### Cycle 24：2026-07-20 至 2026-07-21
 
