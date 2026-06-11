@@ -117,6 +117,38 @@ def save_csv(rows, output_path):
         writer.writerows(rows)
 
 
+def parse_model_specs(model_specs):
+    """Parse repeated state_name=checkpoint_path model specifications."""
+    parsed = []
+    for spec in model_specs or []:
+        if "=" not in spec:
+            raise ValueError(
+                f"Invalid --model value {spec!r}. Expected state_name=checkpoint_path."
+            )
+        state_name, model_path = spec.split("=", 1)
+        state_name = state_name.strip()
+        model_path = Path(model_path.strip())
+        if not state_name:
+            raise ValueError(f"Invalid --model value {spec!r}: empty state name.")
+        parsed.append((state_name, model_path))
+    return parsed
+
+
+def build_model_specs(args):
+    """Build the list of compensation states to evaluate."""
+    explicit_specs = parse_model_specs(args.model)
+    if explicit_specs:
+        return explicit_specs
+
+    legacy_specs = [
+        ("baseline_compensated", args.baseline_model),
+        ("physics_compensated", args.physics_model),
+    ]
+    if args.candidate_model is not None:
+        legacy_specs.append((args.candidate_name, args.candidate_model))
+    return legacy_specs
+
+
 def plot_compensation_effect(summary_rows, example_images, figure_path):
     """绘制综合补偿指标和典型远场图。"""
     figure_path = Path(figure_path)
@@ -193,6 +225,16 @@ def main():
     )
     parser.add_argument("--candidate-model", type=Path, default=None)
     parser.add_argument("--candidate-name", default="candidate_compensated")
+    parser.add_argument(
+        "--model",
+        action="append",
+        default=None,
+        help=(
+            "Additional or replacement model in state_name=checkpoint_path format. "
+            "When supplied, legacy baseline/physics/candidate arguments are ignored. "
+            "Repeat this option to evaluate multiple models."
+        ),
+    )
     parser.add_argument("--max-samples", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-points", type=int, default=256)
@@ -235,48 +277,32 @@ def main():
         labels = labels[:args.max_samples]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    baseline_model = load_seven_beam_model(args.baseline_model, device)
-    physics_model = load_seven_beam_model(args.physics_model, device)
-    candidate_model = None
-    if args.candidate_model is not None:
-        candidate_model = load_seven_beam_model(args.candidate_model, device)
+    model_specs = build_model_specs(args)
+    true_phases = decode_sin_cos(labels)
 
-    baseline_pred = predict_labels(
-        model=baseline_model,
-        images=images,
-        batch_size=args.batch_size,
-        device=device,
-    )
-    physics_pred = predict_labels(
-        model=physics_model,
-        images=images,
-        batch_size=args.batch_size,
-        device=device,
-    )
-    candidate_pred = None
-    if candidate_model is not None:
-        candidate_pred = predict_labels(
-            model=candidate_model,
+    phase_sets_by_state = {
+        "before": true_phases,
+        "ideal": np.zeros_like(true_phases),
+    }
+
+    evaluated_model_specs = []
+    for state_name, model_path in model_specs:
+        if not model_path.exists():
+            print(f"Warning: skip missing model for {state_name}: {model_path}")
+            continue
+        model = load_seven_beam_model(model_path, device)
+        pred = predict_labels(
+            model=model,
             images=images,
             batch_size=args.batch_size,
             device=device,
         )
+        phases = decode_sin_cos(pred)
+        phase_sets_by_state[state_name] = wrap_phase_error(true_phases, phases)
+        evaluated_model_specs.append((state_name, model_path))
 
-    true_phases = decode_sin_cos(labels)
-    baseline_phases = decode_sin_cos(baseline_pred)
-    physics_phases = decode_sin_cos(physics_pred)
-    candidate_phases = None
-    if candidate_pred is not None:
-        candidate_phases = decode_sin_cos(candidate_pred)
-
-    phase_sets_by_state = {
-        "before": true_phases,
-        "baseline_compensated": wrap_phase_error(true_phases, baseline_phases),
-        "physics_compensated": wrap_phase_error(true_phases, physics_phases),
-        "ideal": np.zeros_like(true_phases),
-    }
-    if candidate_phases is not None:
-        phase_sets_by_state[args.candidate_name] = wrap_phase_error(true_phases, candidate_phases)
+    if not evaluated_model_specs:
+        raise FileNotFoundError("No model checkpoints were available for compensation evaluation.")
 
     x_grid, y_grid = create_grid(num_points=args.num_points, window_size=args.window_size)
     main_lobe_mask = make_main_lobe_mask(
@@ -296,10 +322,7 @@ def main():
 
     detail_rows = []
     example_images = {}
-    states = ["before", "baseline_compensated", "physics_compensated"]
-    if candidate_phases is not None:
-        states.append(args.candidate_name)
-    states.append("ideal")
+    states = ["before"] + [state_name for state_name, _ in evaluated_model_specs] + ["ideal"]
 
     for sample_index in range(len(images)):
         for state in states:
@@ -339,6 +362,9 @@ def main():
 
     print("Using device:", device)
     print("Samples:", len(images))
+    print("Models:")
+    for state_name, model_path in evaluated_model_specs:
+        print(f"  {state_name}: {model_path}")
     print("Main-lobe radius(px):", args.main_lobe_radius)
     print("Ideal peak intensity:", ideal_peak)
     print("Ideal main-lobe energy:", ideal_main_lobe_energy)

@@ -511,13 +511,14 @@ L_total = L_phase + lambda_phy * L_farfield
   - 使用预测相位作为补偿量，计算补偿后残余相位。
   - 统一评估补偿前、普通 CNN 补偿后、物理约束 CNN 补偿后和理想相干四种状态。
   - 支持 `--candidate-model` 和 `--candidate-name`，可加入 `residual_cnn_best` 等候选模型。
+  - 支持重复传入 `--model state_name=checkpoint_path`，用于一次评估多个任意命名 checkpoint。
   - 输出主瓣能量占比、旁瓣能量占比、Strehl 比、合成效率、峰值旁瓣比和残余相位 RMSE。
   - 保存明细 CSV、汇总 CSV 和综合对比图。
 - 当前结论：
   - 补偿前合成效率约 `0.53286`。
   - 普通 CNN 补偿后合成效率约 `0.78602`。
   - 物理约束 CNN 补偿后合成效率约 `0.78964`。
-  - 物理约束 CNN 在综合补偿指标上保持小幅优势。
+  - Cycle 27 显示 `residual_cnn_best` 的补偿指标优于普通 CNN、首版物理约束 CNN 和 `residual_cnn + physics, lambda_phy=0.05`。
 
 ### `train/compare_system_scale.py`
 
@@ -820,8 +821,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 围绕一区或二区投稿目标，下一步按无时间约束 Cycle 推进：
 
-- Cycle 27：补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE。
-- Cycle 28：在当前最优残差物理约束路线中测试周期相位损失。
+- Cycle 27：已补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的补偿物理指标，结论见 `result/logs/cycle27_residual_physics_compensation_2026-06-11.md`。
+- Cycle 28：在残差主线上测试周期相位损失，并同时观察相位 RMSE 与补偿物理指标。
 - Cycle 29：设计并运行更大规模七光束数据集实验。
 - Cycle 30：生成焦前/离焦图像数据集并比较相位反演效果。
 - Cycle 31 到 Cycle 34：依次推进鲁棒训练、论文图表、投稿稿和目标期刊筛选。

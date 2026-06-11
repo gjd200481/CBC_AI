@@ -150,6 +150,8 @@ L_total = L_phase + lambda_phy * L_farfield
 
 ### Cycle 27：补齐当前主模型补偿指标
 
+状态：已完成。结果见 `result/logs/cycle27_residual_physics_compensation_2026-06-11.md`。
+
 研究目的：验证 `residual_cnn + physics loss, lambda_phy=0.05` 的相位 RMSE 改善是否能转化为下游远场补偿质量提升。
 
 主要任务：
@@ -166,6 +168,8 @@ L_total = L_phase + lambda_phy * L_farfield
 - `result/figures/cycle27_residual_physics_compensation_*.png`
 
 完成标准：论文中可以明确说明“当前最优相位 RMSE 模型是否同步改善补偿物理指标”。
+
+阶段判断：`residual_cnn_best` 在 256 样本补偿指标上优于 `residual_cnn + physics, lambda_phy=0.05`。后者虽然在 Cycle 25 的测试集相位 RMSE 上更低，但本次没有转化为更好的主瓣能量、Strehl 比或合成效率。因此后续主模型选择不能只看相位 RMSE，还必须联合补偿物理指标。
 
 ### Cycle 28：在最优主线上验证周期相位损失
 

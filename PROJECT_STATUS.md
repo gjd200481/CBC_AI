@@ -432,9 +432,21 @@ result/metrics/cycle08_lambda_sweep_2026-06-07.csv
 | Cycle 33 | 论文初稿升级 | 将中文阶段性稿升级为接近期刊格式的论文稿 | 形成可继续翻译、排版或套模板的投稿稿 |
 | Cycle 34 | 投稿期刊筛选 | 筛选一区/二区候选期刊并反向检查补实验 | 得到目标期刊列表和补实验清单 |
 
+Cycle 27 已完成。关键输出：
+
+```text
+result/logs/cycle27_residual_physics_compensation_2026-06-11.md
+result/metrics/cycle27_residual_physics_compensation_summary_2026-06-11.csv
+result/metrics/cycle27_compensation_comparison_summary_2026-06-11.csv
+result/figures/cycle27_compensation_comparison_2026-06-11.png
+```
+
+Cycle 27 结论：`residual_cnn_best` 在 256 样本补偿指标上最优，主瓣能量占比为 `0.523614`，Strehl 比为 `0.663759`，合成效率为 `0.793090`，残余相位 RMSE 为 `0.862535 rad`。`residual_cnn + physics, lambda_phy=0.05` 的补偿指标未超过 `residual_cnn_best`，其主瓣能量占比为 `0.517471`，Strehl 比为 `0.653397`，合成效率为 `0.783312`，残余相位 RMSE 为 `0.880499 rad`。因此后续主模型选择需要同时看相位 RMSE 和补偿物理指标，不能只按 Cycle 25 的测试集 RMSE 排序。
+
 最新主线判断：
 
 - 当前最优相位 RMSE 来自 `residual_cnn + physics loss, lambda_phy=0.05`，最佳 checkpoint 测试 RMSE 为 `0.983128 rad`。
+- 当前最优补偿物理指标来自 `residual_cnn_best`，它在 Cycle 27 的主瓣能量、Strehl 比、合成效率和残余相位 RMSE 上均优于 `residual_cnn + physics, lambda_phy=0.05`。
 - `cbc_lite_cnn` 与周期损失组合未超过残差物理约束路线，应作为负结果消融保留。
 - `cycleXX` 恢复作为任务分割方式，但不包含时间约束；历史与后续 Cycle 均应服务于一区/二区论文证据链。
 

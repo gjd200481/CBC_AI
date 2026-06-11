@@ -42,10 +42,14 @@ CNN 相位反演
 - 7 光束网络结构快速消融。
 - RTX 3060 长轮次训练准备。
 
-当前最优 7 光束主线候选为：
+当前 7 光束主线判断为：
 
 ```text
+最低测试集相位 RMSE：
 residual_cnn + physics loss, lambda_phy = 0.05, best checkpoint RMSE = 0.983128 rad
+
+最佳补偿物理指标：
+residual_cnn_best, residual phase RMSE = 0.862535 rad, Strehl = 0.663759
 ```
 
 ## 目录结构
@@ -184,11 +188,11 @@ GPU 长训练准备：
 - `train/sweep_seven_beam_architecture.py` 已支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory` 和 `--experiment-tag`。
 - RTX 3060 已完成 `residual_cnn` 50 epoch 复跑，最终测试 RMSE 为 `1.319034 rad`，未优于当前普通 CNN 和物理约束 CNN。
 - 后续仍需要 3060，但重点改为保存最佳验证 checkpoint，并用 `seed=20260612` 做公平长训练对比。
-- 最新最佳 checkpoint 结果显示：`residual_cnn_best` 测试 RMSE 为 `0.992071 rad`，已低于普通 CNN 和物理约束 CNN。下一步需要验证它的主瓣能量、Strehl 比和合成效率是否同步提升。
-- `residual_cnn + physics loss` 已进入下一轮验证，当前 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，说明物理约束与残差结构组合有小幅收益。
+- 最新最佳 checkpoint 结果显示：`residual_cnn_best` 测试 RMSE 为 `0.992071 rad`，已低于普通 CNN 和物理约束 CNN；Cycle 27 进一步显示它在主瓣能量、Strehl 比、合成效率和补偿后残余相位 RMSE 上表现最好。
+- `residual_cnn + physics loss` 的 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，是当前最低相位 RMSE；但 Cycle 27 中其补偿指标没有超过 `residual_cnn_best`。
 - 根据 Xie et al. 2024 的启发，项目已新增周期相位损失 `--phase-loss cyclic`，但不照搬 MobileNetV3-Small；新的候选模型为自研 `cbc_lite_cnn`，面向 CBC 远场条纹图像设计。
 - RTX 3060 已完成 `cbc_lite_cnn` 的 `mse`、`cyclic`、`cyclic_unit` 三轮 50 epoch 对比。最佳结果为 `cbc_lite_cnn + mse`，测试 RMSE `1.219643 rad`，未优于残差物理约束路线。
-- 下一步按无时间约束 Cycle 推进：Cycle 27 补齐当前最优模型的补偿物理指标，Cycle 28 在残差物理约束路线上测试周期相位损失，Cycle 29/30 分别验证数据规模和离焦图像路线。
+- 下一步按无时间约束 Cycle 推进：Cycle 28 在残差主线上测试周期相位损失，Cycle 29/30 分别验证数据规模和离焦图像路线。
 
 ## 项目文档
 
