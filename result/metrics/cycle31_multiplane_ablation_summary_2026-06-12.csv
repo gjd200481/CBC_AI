@@ -1,0 +1,5 @@
+name,model_type,test_rmse_rad,test_mae_rad,train_time_s,improvement_pct
+baseline_single_10k,single,0.9530,0.7824,427.4,0.0
+multiplane_3cm_10k,multiplane,0.9456,0.7767,506.5,0.8
+multiplane_5cm_10k,multiplane,0.9462,0.7771,618.9,0.7
+multiplane_7cm_10k,multiplane,0.9449,0.7762,598.7,0.8

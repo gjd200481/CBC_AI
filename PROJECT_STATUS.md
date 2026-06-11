@@ -443,10 +443,39 @@ result/figures/cycle27_compensation_comparison_2026-06-11.png
 
 Cycle 27 结论：`residual_cnn_best` 在 256 样本补偿指标上最优，主瓣能量占比为 `0.523614`，Strehl 比为 `0.663759`，合成效率为 `0.793090`，残余相位 RMSE 为 `0.862535 rad`。`residual_cnn + physics, lambda_phy=0.05` 的补偿指标未超过 `residual_cnn_best`，其主瓣能量占比为 `0.517471`，Strehl 比为 `0.653397`，合成效率为 `0.783312`，残余相位 RMSE 为 `0.880499 rad`。因此后续主模型选择需要同时看相位 RMSE 和补偿物理指标，不能只按 Cycle 25 的测试集 RMSE 排序。
 
+Cycle 28 已完成。关键输出：
+
+```text
+result/logs/cycle28_data_scale_10k_2026-06-11.md
+result/metrics/cycle28_residual_physics_10k_80epoch_history.csv
+result/metrics/cycle28_residual_physics_10k_80epoch_summary.csv
+result/metrics/cycle28_10k_compensation_summary.csv
+result/metrics/cycle28_1k_vs_10k_summary.csv
+result/figures/cycle28_1k_vs_10k_comparison.png
+models/cycle28_residual_physics_10k_80epoch_best.pth
+```
+
+Cycle 28 结论：将数据规模从1024扩展至10000样本，`residual_cnn + physics loss, lambda_phy=0.05` 最佳checkpoint测试RMSE降至 `0.936 rad`，相比1k数据降低4.8%。但补偿物理指标（主瓣能量0.514，Strehl比0.640，合成效率0.777）略低于1k模型。**关键发现**：数据规模扩展有效但收益有限，相位RMSE与补偿质量矛盾仍未解决。训练过程出现明显过拟合（最优点在epoch 6，最终epoch 80验证RMSE反弹至1.157）。下一步应优先实施补偿质量损失函数重构，而非继续扩大数据。
+
+Cycle 31 已完成。关键输出：
+
+```text
+result/logs/cycle31_multiplane_ablation_2026-06-12.md
+result/metrics/cycle31_multiplane_ablation_summary_2026-06-12.csv
+dataset/seven_beam/multiplane_0_-0.03/
+dataset/seven_beam/multiplane_0_-0.05/
+dataset/seven_beam/multiplane_0_-0.07/
+```
+
+Cycle 31 结论：受Xie et al. 2024启发验证多平面输入策略。Smoke测试（1k数据）显示双平面RMSE比单平面降低 **15.7%**。但完整实验（10k数据）显示多平面改善仅 **0.7-0.8%**。关键发现：多平面收益与数据规模负相关，在当前10k + 11.3M参数配置下，单焦平面已包含足够信息。焦前距离3cm/5cm/7cm差异仅1.4%，推荐5cm对标文献。**阶段性判断**：多平面作为补充实验(supplementary)，证明当前配置已接近单焦平面表示上限，不作为主线创新。项目进入论文写作阶段（Cycle 32-34）。
+
 最新主线判断：
 
-- 当前最优相位 RMSE 来自 `residual_cnn + physics loss, lambda_phy=0.05`，最佳 checkpoint 测试 RMSE 为 `0.983128 rad`。
-- 当前最优补偿物理指标来自 `residual_cnn_best`，它在 Cycle 27 的主瓣能量、Strehl 比、合成效率和残余相位 RMSE 上均优于 `residual_cnn + physics, lambda_phy=0.05`。
+- **Cycle 28 数据规模突破**：10k样本训练的 `residual_cnn + physics loss, lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.936 rad`，相比1k数据的 `0.983 rad` 降低 **4.8%**。
+- 当前最优相位 RMSE 来自 `cycle28_residual_10k`，测试 RMSE `0.936 rad`。
+- **相位RMSE与补偿质量矛盾持续存在**：10k模型相位RMSE更低，但补偿后Strehl比(0.640)、合成效率(0.777)略低于1k模型的Strehl比(0.653)、合成效率(0.783)。
+- 数据规模扩展有效但收益有限，说明单纯增加数据量不是唯一解决方案。
+- **下一步优先级**：实施补偿质量损失函数重构，直接优化Strehl比和主瓣能量，而非继续盲目扩大数据。
 - `cbc_lite_cnn` 与周期损失组合未超过残差物理约束路线，应作为负结果消融保留。
 - `cycleXX` 恢复作为任务分割方式，但不包含时间约束；历史与后续 Cycle 均应服务于一区/二区论文证据链。
 

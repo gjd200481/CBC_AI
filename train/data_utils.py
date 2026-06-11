@@ -16,9 +16,10 @@ class FarFieldPhaseDataset(Dataset):
     后续扩展到多束时，可以使用 [sin(phi_1), cos(phi_1), ...] 的形式。
     """
 
-    def __init__(self, image_path, label_path, expected_size=None):
+    def __init__(self, image_path, label_path, expected_size=None, augment=False):
         self.image_path = Path(image_path)
         self.label_path = Path(label_path)
+        self.augment = augment
 
         self.images = np.load(self.image_path)
         self.labels = np.load(self.label_path)
@@ -26,9 +27,10 @@ class FarFieldPhaseDataset(Dataset):
         self._validate(expected_size=expected_size)
 
     def _validate(self, expected_size):
-        if self.images.ndim != 3:
+        # 支持单平面 [N,H,W] 或多平面 [N,P,H,W]
+        if self.images.ndim not in (3, 4):
             raise ValueError(
-                f"Expected images with shape [N, H, W], got {self.images.shape}"
+                f"Expected images with shape [N,H,W] or [N,P,H,W], got {self.images.shape}"
             )
         if self.labels.ndim != 2:
             raise ValueError(
@@ -43,18 +45,34 @@ class FarFieldPhaseDataset(Dataset):
             raise ValueError(
                 f"Label dimension must be even for sin/cos pairs, got {self.labels.shape[1]}"
             )
-        if expected_size is not None and self.images.shape[1:] != tuple(expected_size):
-            raise ValueError(
-                f"Expected image size {tuple(expected_size)}, got {self.images.shape[1:]}"
-            )
+        if expected_size is not None:
+            actual_size = self.images.shape[-2:] if self.images.ndim == 4 else self.images.shape[1:]
+            if actual_size != tuple(expected_size):
+                raise ValueError(
+                    f"Expected image size {tuple(expected_size)}, got {actual_size}"
+                )
+
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, index):
-        # Conv2d 需要 [C, H, W]，远场光强是单通道图像，因此增加 C=1。
-        image = torch.as_tensor(self.images[index], dtype=torch.float32).unsqueeze(0)
-        label = torch.as_tensor(self.labels[index], dtype=torch.float32)
+        image = self.images[index].copy()
+        label = self.labels[index].copy()
+        
+        if self.augment and np.random.rand() > 0.5:
+            # 随机噪声增强
+            noise = np.random.randn(*image.shape) * 0.01
+            image = image + noise
+            image = np.clip(image, 0, None)
+        
+        # 单平面 [H,W] -> [1,H,W], 多平面 [P,H,W] 保持
+        if image.ndim == 2:
+            image = torch.as_tensor(image, dtype=torch.float32).unsqueeze(0)
+        else:
+            image = torch.as_tensor(image, dtype=torch.float32)
+        
+        label = torch.as_tensor(label, dtype=torch.float32)
         return image, label
 
     @property
@@ -91,12 +109,14 @@ def build_dataloaders(
     seed=20260608,
     expected_size=(160, 160),
     num_workers=0,
+    augment_train=False,
 ):
     """构建训练、验证、测试 DataLoader。"""
     dataset = FarFieldPhaseDataset(
         image_path=image_path,
         label_path=label_path,
         expected_size=expected_size,
+        augment=False,
     )
     train_set, val_set, test_set = split_dataset(
         dataset=dataset,
@@ -104,6 +124,9 @@ def build_dataloaders(
         val_ratio=val_ratio,
         seed=seed,
     )
+    
+    if augment_train:
+        train_set.dataset.augment = True
 
     train_loader = DataLoader(
         train_set,

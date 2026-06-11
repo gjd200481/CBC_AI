@@ -261,17 +261,110 @@ class CBCPhaseLiteCNN(nn.Module):
         return self.regressor(x)
 
 
-def build_phase_model(model_name, image_size=160, output_dim=2):
+class DeepResidualPhaseCNN(nn.Module):
+    """深度残差网络 + 通道注意力，用于高精度相位反演。"""
+    
+    def __init__(self, image_size=160, output_dim=2, in_channels=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, 64, 7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.pool = nn.MaxPool2d(3, stride=2, padding=1)
+        
+        self.layer1 = self._make_layer(64, 64, 2)
+        self.layer2 = self._make_layer(64, 128, 2, stride=2)
+        self.layer3 = self._make_layer(128, 256, 2, stride=2)
+        self.layer4 = self._make_layer(256, 512, 2, stride=2)
+        
+        self.channel_attention = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(512, 32),
+            nn.ReLU(inplace=True),
+            nn.Linear(32, 512),
+            nn.Sigmoid()
+        )
+        
+        self.fc = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(256, output_dim)
+        )
+    
+    def _make_layer(self, in_ch, out_ch, num_blocks, stride=1):
+        layers = [BasicResBlock(in_ch, out_ch, stride)]
+        for _ in range(num_blocks - 1):
+            layers.append(BasicResBlock(out_ch, out_ch, 1))
+        return nn.Sequential(*layers)
+    
+    def forward(self, x):
+        x = self.pool(nn.functional.relu(self.bn1(self.conv1(x))))
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        
+        att = self.channel_attention(x).unsqueeze(-1).unsqueeze(-1)
+        x = x * att
+        
+        return self.fc(x)
+
+
+class BasicResBlock(nn.Module):
+    """基础残差块"""
+    def __init__(self, in_ch, out_ch, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, 3, stride, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_ch)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, 3, 1, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, 1, stride, bias=False),
+                nn.BatchNorm2d(out_ch)
+            )
+    
+    def forward(self, x):
+        out = nn.functional.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        return nn.functional.relu(out)
+
+
+class MultiPlanePhaseCNN(nn.Module):
+    """多平面输入深度残差网络"""
+    
+    def __init__(self, image_size=160, output_dim=2, num_planes=2):
+        super().__init__()
+        # 使用DeepResidualPhaseCNN架构，但输入通道改为num_planes
+        self.base = DeepResidualPhaseCNN(image_size, output_dim, in_channels=num_planes)
+    
+    def forward(self, x):
+        # x: [B, num_planes, H, W]
+        return self.base(x)
+
+
+def build_phase_model(model_name, image_size=160, output_dim=2, in_channels=1):
     """按名称构建相位反演网络，便于训练脚本做结构消融。"""
     model_classes = {
         "simple_cnn": SimplePhaseCNN,
         "wide_cnn": WidePhaseCNN,
         "residual_cnn": ResidualPhaseCNN,
         "cbc_lite_cnn": CBCPhaseLiteCNN,
+        "deep_residual_cnn": DeepResidualPhaseCNN,
+        "multiplane_cnn": MultiPlanePhaseCNN,
     }
     if model_name not in model_classes:
         raise ValueError(f"Unknown model_name={model_name}. Expected one of {sorted(model_classes)}")
-    return model_classes[model_name](image_size=image_size, output_dim=output_dim)
+    
+    if model_name == "deep_residual_cnn":
+        return model_classes[model_name](image_size=image_size, output_dim=output_dim, in_channels=in_channels)
+    else:
+        return model_classes[model_name](image_size=image_size, output_dim=output_dim)
 
 
 def count_parameters(model):

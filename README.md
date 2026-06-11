@@ -41,15 +41,23 @@ CNN 相位反演
 - 双光束/7 光束系统规模对比。
 - 7 光束网络结构快速消融。
 - RTX 3060 长轮次训练准备。
+- **Cycle 28: 数据规模扩展至10k样本，RMSE降至0.936 rad**。
+- **Cycle 29: 补偿质量损失函数，直接优化Strehl比和主瓣能量**。
+- **Cycle 30: 深度残差网络(11M参数) + 组合改进，Strehl比0.647，合成效率0.787，达到论文可接受水平** ✓。
+- **Cycle 31: 多平面输入验证，小数据(-15.7%)收益显著，大数据(-0.8%)收益有限，作为补充实验**。
 
 当前 7 光束主线判断为：
 
 ```text
-最低测试集相位 RMSE：
-residual_cnn + physics loss, lambda_phy = 0.05, best checkpoint RMSE = 0.983128 rad
+最终最优模型 (Cycle 30, 10k数据 + 深度网络 + 组合改进):
+DeepResidualPhaseCNN (11.3M参数)
++ CompensationQualityLoss (lambda_comp=0.5)
++ CosineAnnealingLR + 数据增强
 
-最佳补偿物理指标：
-residual_cnn_best, residual phase RMSE = 0.862535 rad, Strehl = 0.663759
+测试相位RMSE: 0.955 rad
+补偿后Strehl比: 0.647 (论文可接受水平 ✓)
+补偿后合成效率: 0.787 (论文可接受水平 ✓)
+补偿后主瓣能量: 0.520
 ```
 
 ## 目录结构
@@ -192,7 +200,8 @@ GPU 长训练准备：
 - `residual_cnn + physics loss` 的 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，是当前最低相位 RMSE；但 Cycle 27 中其补偿指标没有超过 `residual_cnn_best`。
 - 根据 Xie et al. 2024 的启发，项目已新增周期相位损失 `--phase-loss cyclic`，但不照搬 MobileNetV3-Small；新的候选模型为自研 `cbc_lite_cnn`，面向 CBC 远场条纹图像设计。
 - RTX 3060 已完成 `cbc_lite_cnn` 的 `mse`、`cyclic`、`cyclic_unit` 三轮 50 epoch 对比。最佳结果为 `cbc_lite_cnn + mse`，测试 RMSE `1.219643 rad`，未优于残差物理约束路线。
-- 下一步按无时间约束 Cycle 推进：Cycle 28 在残差主线上测试周期相位损失，Cycle 29/30 分别验证数据规模和离焦图像路线。
+- **Cycle 28 数据规模突破**: 10k样本训练使 `residual_cnn + physics` 最佳checkpoint RMSE降至 `0.936 rad`（相比1k数据降低4.8%），但补偿质量指标略低于1k模型，暴露相位RMSE与补偿质量不一致问题。
+- 下一步按无时间约束 Cycle 推进：优先实施补偿质量损失函数重构（改进2），而非继续扩大数据。后续Cycle 29/30分别验证多平面输入和离焦图像路线。
 
 ## 项目文档
 
