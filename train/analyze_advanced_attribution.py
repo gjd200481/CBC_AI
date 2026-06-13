@@ -352,7 +352,7 @@ def main():
         checkpoint['model_name'],
         image_size=images.shape[-1],
         output_dim=12,
-        input_channels=images.shape[1] if len(images.shape) == 4 else 1
+        in_channels=images.shape[1] if len(images.shape) == 4 else 1
     ).to(device)
 
     model.load_state_dict(checkpoint['model_state_dict'])

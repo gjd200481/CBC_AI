@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from train.models import build_phase_model, count_parameters
 from train.phase_metrics import phase_rmse_from_sin_cos, decode_sin_cos, wrap_phase_error
-from train.physics_loss import SevenBeamFourierOptics
+from train.physics_loss import FarFieldConsistencyLoss, SevenBeamFourierOptics
 
 
 class NoisyMultiPlaneDataset(Dataset):
@@ -272,7 +272,7 @@ def main():
         args.model_name,
         image_size=images.shape[-1],
         output_dim=12,
-        input_channels=images.shape[1] if len(images.shape) == 4 else 1
+        in_channels=images.shape[1] if len(images.shape) == 4 else 1
     ).to(device)
 
     n_params = count_parameters(model)
@@ -285,11 +285,15 @@ def main():
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
 
     # 物理损失
-    physics_loss_fn = SevenBeamFourierOptics(
-        num_points=256, window_size=0.01,
-        waist=0.0005, beam_distance=0.0015,
-        crop_size=images.shape[-1]
-    ).to(device) if args.lambda_phy > 0 else None
+    if args.lambda_phy > 0:
+        optics_model = SevenBeamFourierOptics(
+            num_points=256, window_size=0.01,
+            waist=0.0005, beam_distance=0.0015,
+            crop_size=images.shape[-1]
+        ).to(device)
+        physics_loss_fn = FarFieldConsistencyLoss(optics_model=optics_model).to(device)
+    else:
+        physics_loss_fn = None
 
     # 训练循环
     print("开始训练...\n")
