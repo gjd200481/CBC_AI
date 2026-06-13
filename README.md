@@ -45,19 +45,31 @@ CNN 相位反演
 - **Cycle 29: 补偿质量损失函数，直接优化Strehl比和主瓣能量**。
 - **Cycle 30: 深度残差网络(11M参数) + 组合改进，Strehl比0.647，合成效率0.787，达到论文可接受水平** ✓。
 - **Cycle 31: 多平面输入验证，小数据(-15.7%)收益显著，大数据(-0.8%)收益有限，作为补充实验**。
+- **Cycle 32-40: 六边形对称增强、补偿损失调度、checkpoint选择策略、未归一化Strehl修复**。
+- **Cycle 41: 修复训练期Strehl指标，使checkpoint选择与最终评估一致**。
+- **Cycle 42: 焦平面/焦前双分支融合，以5.77M参数超过Cycle 41的11.34M模型** ✓✓。
+- **Cycle 43: Attribution解释性与噪声鲁棒性验证，技术验证阶段完成** ✓✓✓。
 
-当前 7 光束主线判断为：
+当前双主模型配置：
 
 ```text
-最终最优模型 (Cycle 30, 10k数据 + 深度网络 + 组合改进):
-DeepResidualPhaseCNN (11.3M参数)
+补偿质量主模型 (Cycle 42, 焦平面/焦前双分支融合):
+DualPlaneFusionPhaseCNN (5.77M参数)
++ 焦平面/焦前显式门控融合
 + CompensationQualityLoss (lambda_comp=0.5)
-+ CosineAnnealingLR + 数据增强
++ 未归一化Strehl checkpoint选择
 
-测试相位RMSE: 0.955 rad
-补偿后Strehl比: 0.647 (论文可接受水平 ✓)
-补偿后合成效率: 0.787 (论文可接受水平 ✓)
-补偿后主瓣能量: 0.520
+补偿后Strehl比: 0.683 (论文可接受水平 ✓✓)
+补偿后合成效率: 0.796 (论文可接受水平 ✓✓)
+补偿后主瓣能量: 0.525
+残余相位RMSE: 0.892 rad
+
+噪声鲁棒性 (σ=0.02): Strehl 0.481 > Cycle41 0.407
+
+相位精度主模型 (Cycle 37):
+MultiPlanePhaseCNN, lambda_comp=0.3
+测试相位RMSE: 0.932 rad
+残余相位RMSE: 0.866 rad (当前最低)
 ```
 
 ## 目录结构
@@ -168,6 +180,7 @@ Strehl 比阶段性结论：
 - 补偿前 Strehl 均值约 `0.39069`。
 - 普通 CNN 补偿后约 `0.64717`。
 - 物理约束 CNN 补偿后约 `0.65356`。
+- **Cycle 42 双分支融合补偿后约 `0.68269`** ✓✓。
 - 理想相干为 `1.00000`。
 
 相位补偿综合效果阶段性结论：
@@ -175,7 +188,8 @@ Strehl 比阶段性结论：
 - 补偿前合成效率约 `0.53286`。
 - 普通 CNN 补偿后合成效率约 `0.78602`。
 - 物理约束 CNN 补偿后合成效率约 `0.78964`。
-- 物理约束 CNN 在主瓣能量占比、Strehl 比、合成效率和残余相位 RMSE 上均略优于普通 CNN。
+- **Cycle 42 双分支融合补偿后合成效率约 `0.79585`** ✓✓。
+- Cycle 42 模型在主瓣能量占比、Strehl 比、合成效率和噪声鲁棒性上全面优于早期模型。
 
 系统规模对比阶段性结论：
 
@@ -189,19 +203,24 @@ Strehl 比阶段性结论：
 - 96 样本、2 epoch 快速筛选中，`residual_cnn` 的测试 RMSE 为 `1.709031 rad`，优于同设置下的 `simple_cnn` 和 `wide_cnn`。
 - 该结果只用于候选筛选，后续需要完整数据长训练验证。
 
-GPU 长训练准备：
+技术验证历程总结：
 
-- 已新增 [GPU_TRAINING_3060.md](GPU_TRAINING_3060.md)，给出 RTX 3060 上运行 `residual_cnn` 完整数据 50/80 epoch 的命令。
-- 已新增 `scripts/run_cycle22_gpu_residual.ps1`，可在 GPU 电脑上直接启动长训练。
-- `train/sweep_seven_beam_architecture.py` 已支持 `--full-dataset`、`--device cuda`、`--num-workers`、`--pin-memory` 和 `--experiment-tag`。
-- RTX 3060 已完成 `residual_cnn` 50 epoch 复跑，最终测试 RMSE 为 `1.319034 rad`，未优于当前普通 CNN 和物理约束 CNN。
-- 后续仍需要 3060，但重点改为保存最佳验证 checkpoint，并用 `seed=20260612` 做公平长训练对比。
-- 最新最佳 checkpoint 结果显示：`residual_cnn_best` 测试 RMSE 为 `0.992071 rad`，已低于普通 CNN 和物理约束 CNN；Cycle 27 进一步显示它在主瓣能量、Strehl 比、合成效率和补偿后残余相位 RMSE 上表现最好。
-- `residual_cnn + physics loss` 的 `lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.983128 rad`，是当前最低相位 RMSE；但 Cycle 27 中其补偿指标没有超过 `residual_cnn_best`。
-- 根据 Xie et al. 2024 的启发，项目已新增周期相位损失 `--phase-loss cyclic`，但不照搬 MobileNetV3-Small；新的候选模型为自研 `cbc_lite_cnn`，面向 CBC 远场条纹图像设计。
-- RTX 3060 已完成 `cbc_lite_cnn` 的 `mse`、`cyclic`、`cyclic_unit` 三轮 50 epoch 对比。最佳结果为 `cbc_lite_cnn + mse`，测试 RMSE `1.219643 rad`，未优于残差物理约束路线。
-- **Cycle 28 数据规模突破**: 10k样本训练使 `residual_cnn + physics` 最佳checkpoint RMSE降至 `0.936 rad`（相比1k数据降低4.8%），但补偿质量指标略低于1k模型，暴露相位RMSE与补偿质量不一致问题。
-- 下一步按无时间约束 Cycle 推进：优先实施补偿质量损失函数重构（改进2），而非继续扩大数据。后续Cycle 29/30分别验证多平面输入和离焦图像路线。
+- Cycle 1-20：建立双光束到七光束完整训练流程，验证物理约束有效性。
+- Cycle 21-27：网络结构消融，确认残差网络优于简单CNN，发现相位RMSE与补偿质量不完全一致。
+- Cycle 28-30：数据规模扩展(10k)，补偿质量损失重构，达到Strehl 0.647论文可接受水平。
+- Cycle 31：多平面输入验证，发现大数据集下收益有限(0.8%)，作为补充实验保留。
+- Cycle 32-34：六边形对称增强、补偿损失调度(warmup)、单位圆约束参数扫描。
+- Cycle 35-40：Attribution解释性、多平面7cm训练、lambda_comp扫描、checkpoint选择策略验证。
+- Cycle 41：修复未归一化Strehl指标，使训练期选择与最终评估一致。
+- **Cycle 42：焦平面/焦前双分支门控融合，以更小参数量(5.77M)超过简单堆叠(11.34M)**。
+- **Cycle 43：Attribution显示动态跨平面特征分配，噪声鲁棒性验证在σ≥0.005全面优于Cycle 41**。
+
+关键负结果记录：
+
+- 周期相位损失(cyclic)在cbc_lite_cnn上未超过MSE。
+- 轻量网络cbc_lite_cnn未超过残差物理约束路线。
+- 六边形对称增强未转化为补偿质量收益。
+- 多平面在10k数据下收益仅0.8%，但双分支显式融合有效。
 
 ## 项目文档
 

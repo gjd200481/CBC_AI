@@ -645,15 +645,33 @@ result/figures/cycle42_literature_style_fusion_evidence.png
 
 Cycle 42 结论：`dual_plane_fusion_cnn` 参数量为 `5.77M`，小于 Cycle41 简单双通道 `deep_residual_cnn` 的 `11.34M`。正式 paired 评估中，`cycle42_best_rmse` 的主瓣能量占比为 `0.525304`、Strehl 为 `0.682690`、合成效率为 `0.795854`、残余相位 RMSE 为 `0.892309 rad`，相较 Cycle41 的 `0.524967`、`0.670898`、`0.795033`、`0.896828 rad` 同时改善。该结果说明焦平面/焦前显式分支融合优于简单通道堆叠，当前补偿质量主模型更新为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`；相位/残余 RMSE 主模型仍为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
 
+Cycle 43 已完成：双分支解释性与噪声鲁棒性补强。关键输出：
+
+```text
+result/logs/cycle43_dual_plane_attribution_noise_2026-06-13.md
+result/metrics/cycle43_attribution_cycle41_64.csv
+result/metrics/cycle43_attribution_cycle42_64.csv
+result/metrics/cycle43_attribution_overview_64.csv
+result/metrics/cycle43_dual_plane_noise_robustness_summary.csv
+result/figures/cycle43_attribution_overview_64.png
+result/figures/cycle43_dual_plane_noise_robustness.png
+```
+
+Cycle 43 结论：
+
+1. **Attribution 验证**：64 样本 × 6 通道 attribution 分析显示，Cycle42 双分支模型的焦平面/焦前能量占比为 `48.4% / 51.6%`，标准差约 `0.314`，说明模型在不同样本和通道间动态分配跨平面特征贡献，而非固定偏向某一平面。
+2. **噪声鲁棒性验证**：256 样本噪声扫描（σ=0, 0.002, 0.005, 0.01, 0.02, 0.03）显示，Cycle42 在 σ≥0.005 时全面优于 Cycle41。以 σ=0.02 为例，Cycle42 的 Strehl 为 `0.481`（vs Cycle41 `0.407`）、合成效率为 `0.659`（vs `0.554`）、残余 RMSE 为 `1.364 rad`（vs `1.718 rad`）。
+3. **阶段判断**：Cycle42 可确认为补偿质量主模型。其干净输入下补偿质量优于 Cycle41，并在中高噪声下保持更强稳定性。Attribution 支持"双分支确实自适应使用两个输入平面"，但未支持"焦前分支绝对主导"的强断言。
+4. **技术验证阶段完成**：Cycle 43 是技术验证闭环的最后一环，后续应进入论文收束与投稿准备。
+
 最新主线判断：
 
-- **当前双主模型已更新**：补偿质量主模型为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`；相位/残余 RMSE 主模型为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
-- **相位 RMSE 与补偿质量矛盾持续存在**：更低 RMSE 不总能带来更高 Strehl、主瓣能量和合成效率，因此后续模型选择必须显式对齐下游补偿物理指标。
-- **焦平面/焦前显式融合成立**：Cycle42 以更小参数量超过 Cycle41，说明当前收益来自更合理的信息融合结构，而不是模型体量扩张。
-- **下一步优先级**：1）执行 Cycle 43，对 Cycle42 与 Cycle41 做 attribution 对比，检查双分支是否更有效利用焦前局部相位线索；2）对 Cycle42 做噪声鲁棒性评估，模仿 Xie 2024 的噪声扫描与任务指标退化曲线；3）若解释性和鲁棒性成立，则将 Cycle42 固定为论文主模型。
-- **明确禁止项**：不要使用当前训练内归一化 `val_strehl_ratio` 作为正式模型选择依据；不要继续盲目扩大 `lambda_comp` 网格；不要把“更大模型”作为下一阶段默认方向。
-- `cbc_lite_cnn` 与周期损失组合未超过残差物理约束路线，应作为负结果消融保留。
-- `cycleXX` 恢复作为任务分割方式，但不包含时间约束；历史与后续 Cycle 均应服务于一区/二区论文证据链。
+- **当前双主模型最终配置**：补偿质量主模型为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`（Strehl 0.683, 合成效率 0.796）；相位/残余 RMSE 主模型为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`（残余 RMSE 0.866 rad）。
+- **相位 RMSE 与补偿质量权衡是论文特色**：更低 RMSE 不总能带来更高 Strehl 和合成效率，项目通过双主模型和显式补偿质量优化解决该矛盾。
+- **焦平面/焦前显式融合成立**：Cycle42 以更小参数量（5.77M）超过 Cycle41（11.34M），收益来自更合理的信息融合而非模型体量。
+- **技术验证阶段完成**：Cycle 1-43 完成从双光束到七光束、从简单 CNN 到双分支融合、从相位监督到补偿质量优化、从干净数据到噪声鲁棒性的完整验证链。
+- **下一阶段：论文收束与投稿准备**：整理主图主表、撰写 Method 和 Results 章节、补充 Related Work 对标、内部审阅后投稿。
+- **关键负结果已记录**：周期损失、轻量网络 cbc_lite、六边形对称增强未带来收益，作为消融分析保留。
 
 ## 当前阶段性判断
 

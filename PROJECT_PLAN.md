@@ -382,9 +382,9 @@ L_total = L_phase
 
 完成标准：已完成。Cycle42 `dual_plane_fusion_cnn` 以 `5.77M` 参数超过 Cycle41 简单双通道 `deep_residual_cnn` 的 `11.34M` 参数模型。paired 评估中，`cycle42_best_rmse` 的主瓣能量占比 `0.525304`、Strehl `0.682690`、合成效率 `0.795854`、残余相位 RMSE `0.892309 rad`，均优于 Cycle41 的 `0.524967`、`0.670898`、`0.795033`、`0.896828 rad`。因此“焦平面/焦前显式融合优于简单通道堆叠”阶段性成立。
 
-### Cycle 43：双分支解释性与鲁棒性补强
+### Cycle 43：双分支解释性与鲁棒性补强（已完成 ✓✓✓）
 
-研究目的：在 Cycle42 正结果基础上，验证双分支门控融合是否真的利用了焦前图像的局部相位线索，并判断该收益在噪声扰动下是否稳定。该周期对齐 Xie 2024 的“误差统计 + attribution map + 噪声鲁棒性曲线”证据链。
+研究目的：在 Cycle42 正结果基础上，验证双分支门控融合是否真的利用了焦前图像的局部相位线索，并判断该收益在噪声扰动下是否稳定。该周期对齐 Xie 2024 的"误差统计 + attribution map + 噪声鲁棒性曲线"证据链。
 
 主要任务：
 
@@ -395,13 +395,15 @@ L_total = L_phase
 
 产出文件：
 
-- `result/logs/cycle43_dual_plane_attribution_*.md`
-- `result/metrics/cycle43_dual_plane_attribution_*.csv`
-- `result/metrics/cycle43_dual_plane_noise_robustness_*.csv`
-- `result/figures/cycle43_dual_plane_attribution_*.png`
-- `result/figures/cycle43_dual_plane_noise_robustness_*.png`
+- `result/logs/cycle43_dual_plane_attribution_noise_2026-06-13.md`
+- `result/metrics/cycle43_attribution_cycle41_64.csv`
+- `result/metrics/cycle43_attribution_cycle42_64.csv`
+- `result/metrics/cycle43_attribution_overview_64.csv`
+- `result/metrics/cycle43_dual_plane_noise_robustness_summary.csv`
+- `result/figures/cycle43_attribution_overview_64.png`
+- `result/figures/cycle43_dual_plane_noise_robustness.png`
 
-完成标准：明确判断 Cycle42 正结果是否具有物理解释和噪声稳定性；若成立，后续进入论文主图、主表和讨论组织。
+完成标准：已完成。Attribution 分析显示 Cycle42 双分支模型动态分配跨平面特征（焦平面 48.4%，焦前 51.6%，标准差 0.314），说明自适应使用两个输入平面。噪声鲁棒性在 σ≥0.005 时全面优于 Cycle41（σ=0.02 时 Strehl 0.481 vs 0.407）。**技术验证阶段完成，Cycle42 确认为补偿质量主模型**。
 
 ## 论文主线建议
 
