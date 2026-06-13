@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import math
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -167,10 +168,13 @@ def plot_compensation_effect(summary_rows, example_images, figure_path):
         ("peak_to_sidelobe_ratio", "Peak-to-sidelobe ratio"),
     ]
 
-    plt.figure(figsize=(18, 12))
+    total_panels = len(metric_panels) + len(states)
+    ncols = 4
+    nrows = math.ceil(total_panels / ncols)
+    plt.figure(figsize=(4.5 * ncols, 3.8 * nrows))
 
     for panel_index, (metric_name, title) in enumerate(metric_panels, start=1):
-        plt.subplot(3, 4, panel_index)
+        plt.subplot(nrows, ncols, panel_index)
         means = [row[f"{metric_name}_mean"] for row in summary_rows]
         stds = [row[f"{metric_name}_std"] for row in summary_rows]
         plt.bar(states, means, yerr=stds, capsize=4, color=colors)
@@ -178,7 +182,7 @@ def plot_compensation_effect(summary_rows, example_images, figure_path):
         plt.title(title)
 
     for panel_index, state in enumerate(states, start=7):
-        plt.subplot(3, 4, panel_index)
+        plt.subplot(nrows, ncols, panel_index)
         image = example_images[state]
         display = np.log10(image / max(float(np.max(image)), 1e-12) + 1e-6)
         plt.imshow(display, cmap="inferno")

@@ -248,64 +248,160 @@ L_total = L_phase + lambda_phy * L_farfield
 
 完成标准：给出“物理约束 + 噪声增强是否能提高鲁棒性”的可发表结论。
 
-### Cycle 32：论文主图与表格定稿
+### Cycle 32：六边形对称增强与通道均衡
 
-研究目的：把已有实验转化为正式论文图表证据链。
-
-主要任务：
-
-- 统一图表风格、坐标轴、图例和单位。
-- 汇总模型 RMSE、MAE、远场 MSE、主瓣能量、Strehl 比、合成效率等指标。
-- 制作论文主图：
-  1. 七光束阵列与仿真流程。
-  2. 物理约束训练框架。
-  3. 模型性能对比。
-  4. 补偿前后远场图样。
-  5. 鲁棒性曲线。
-  6. 负结果消融。
-
-产出文件：
-
-- `paper/figures/`
-- `paper/tables/`
-- `result/logs/cycle32_paper_figures_*.md`
-
-完成标准：论文初稿可以直接引用主图和主表。
-
-### Cycle 33：论文初稿升级为投稿稿
-
-研究目的：把当前中文阶段性初稿升级为接近期刊投稿格式的论文稿。
+研究目的：利用 7 光束六边形阵列的旋转/镜像对称性，减少网络对固定通道位置的偶然记忆，改善 6 路外圈相位预测的通道不平衡，并观察这种改进是否能转化为 Strehl 比、主瓣能量和合成效率提升。
 
 主要任务：
 
-- 重写摘要、引言、方法、实验、讨论和结论。
-- 增加英文标题、英文摘要和关键词。
-- 加强与 Hou、Mills、Xie 等文献的差异化讨论。
-- 将负结果写成合理消融，而不是简单失败记录。
+- 实现七光束专用的标签感知数据增强：`60°` 倍数旋转、镜像翻转，以及外圈 6 路相位标签的同步循环重排/反向重排。
+- 在 `DeepResidualPhaseCNN` 或当前 Cycle 30 主模型训练脚本中接入该增强，保持数据集、随机种子和训练轮次尽量可比。
+- 对比无增强、普通图像增强、六边形对称增强三种设置。
+- 同时记录相位 RMSE、逐通道 RMSE、通道不平衡、主瓣能量占比、Strehl 比和合成效率。
 
 产出文件：
 
-- `paper/CBC_AI_manuscript_draft_*.md`
-- `paper/references.bib` 或参考文献清单
+- `train/hexagonal_augmentation.py` 或等价的数据增强模块。
+- `result/logs/cycle32_hex_symmetry_augmentation_*.md`
+- `result/metrics/cycle32_hex_symmetry_augmentation_*.csv`
+- `result/figures/cycle32_hex_symmetry_augmentation_*.png`
 
-完成标准：形成可以继续翻译、排版或投给目标期刊模板的论文稿。
+完成标准：判断六边形物理对称增强是否能降低通道不平衡，并给出其对补偿质量指标的定量影响。
 
-### Cycle 34：投稿目标期刊筛选与补实验清单
+### Cycle 33：补偿质量损失调度与单位圆约束
 
-研究目的：根据目标期刊要求反向检查论文缺口。
+研究目的：解决相位 RMSE 与补偿质量不完全一致的问题，让训练目标更直接地服务于下游远场补偿效果，同时避免直接优化 Strehl/主瓣能量导致训练不稳定。
 
 主要任务：
 
-- 筛选 3 到 5 个一区/二区候选期刊。
-- 比较栏目范围、图表要求、创新性要求和数据可用性要求。
-- 根据目标期刊审稿标准整理必须补做的实验。
+- 将 `CompensationQualityLoss` 从固定权重改为 warmup/调度策略：前期以相位监督和远场一致性为主，后期逐步加入补偿质量项。
+- 增加 `sin^2 + cos^2 = 1` 的单位圆正则，约束网络输出更符合周期相位编码几何。
+- 比较 `lambda_comp`、warmup epoch、`lambda_unit` 等关键超参数。
+- 与 Cycle 30 主模型和 Cycle 32 最佳设置做统一补偿指标评估。
+
+建议总损失：
+
+```text
+L_total = L_phase
+        + lambda_phy * L_farfield
+        + lambda_comp(t) * L_compensation
+        + lambda_unit * L_unit_circle
+```
 
 产出文件：
 
-- `paper/journal_target_list_*.md`
-- `paper/revision_checklist_*.md`
+- `train/train_seven_beam_compensation_loss.py` 的稳定版或新训练入口。
+- `result/logs/cycle33_comp_loss_schedule_*.md`
+- `result/metrics/cycle33_comp_loss_schedule_*.csv`
+- `result/figures/cycle33_comp_loss_schedule_*.png`
 
-完成标准：确定优先投稿方向和下一轮补实验清单。
+完成标准：判断补偿质量损失调度和单位圆约束是否能在不显著牺牲相位 RMSE 的前提下提升 Strehl 比、主瓣能量占比和合成效率。
+
+### Cycle 34：补偿损失 warmup 与单位圆约束稳定性扫描
+
+研究目的：围绕 Cycle 33 的小正结果做参数稳定性验证，确定补偿质量损失加入训练的最佳节奏，以及单位圆约束权重的合理范围。
+
+主要任务：
+
+- 固定 `lambda_comp=0.5` 和当前主模型 `DeepResidualPhaseCNN`。
+- 先扫描 `lambda_unit=0.003/0.01/0.03`，判断单位圆约束强弱对 RMSE 与补偿指标的影响。
+- 在 `lambda_unit=0.01` 最佳折中点上，继续扫描 `comp_warmup_epochs=5/10/15`。
+- 与 Cycle 30、Cycle 33 做统一补偿指标评估。
+
+产出文件：
+
+- `result/logs/cycle34_unit_weight_scan_*.md`
+- `result/logs/cycle34_warmup_scan_*.md`
+- `result/metrics/cycle34_*_summary.csv`
+- `result/figures/cycle34_*_comparison.png`
+
+完成标准：给出当前主线训练损失的默认推荐参数，并判断收益是否稳定。
+
+### Cycle 35：焦平面/焦前输入的 attribution 解释性分析
+
+研究目的：借鉴 Hou 和 Xie 对非焦平面图像的解释，比较单焦平面与焦前/多平面模型的 attribution/saliency map，判断焦前图像是否真的提供更局部、更可分的相位线索。
+
+主要任务：
+
+- 对 Cycle 30 单焦平面模型和 Cycle 31 多平面/焦前模型做 saliency 或 gradient attribution。
+- 对每个外圈通道分别计算输入像素对该通道相位预测的敏感性。
+- 比较 attribution 的局部性、对称性和光束相关区域分布。
+- 结合 RMSE 与补偿指标解释为什么多平面在 10k 数据下收益有限。
+
+产出文件：
+
+- `train/analyze_phase_attribution.py`
+- `result/logs/cycle35_attribution_analysis_*.md`
+- `result/figures/cycle35_attribution_*.png`
+- `result/metrics/cycle35_attribution_summary.csv`
+
+完成标准：给出“焦前图像是否提供更强物理可解释线索”的阶段性判断；若解释性强但性能收益小，可作为补充实验和论文讨论依据。
+
+### Cycle 41：未归一化 Strehl checkpoint 选择修复
+
+研究目的：解决 Cycle 40 暴露的训练期 Strehl 指标失真问题，使训练过程中的 checkpoint 选择与最终补偿评估脚本使用的未归一化远场指标保持一致。
+
+主要任务：
+
+- 在 `SevenBeamFourierOptics` 或独立验证工具中增加未归一化远场输出接口，避免 `reconstruct_from_phase()` 的峰值归一化影响 Strehl 计算。
+- 在 `train/train_multiplane.py` 中使用未归一化远场计算 `val_strehl_ratio`、`val_main_lobe_ratio` 和合成效率等验证指标。
+- 保留归一化远场用于训练期 far-field MSE 的兼容路径，避免破坏既有物理一致性损失。
+- 先运行 1-3 epoch smoke，确认 `val_strehl_ratio` 不再退化为接近 `1.0` 的恒定值。
+- 将 smoke checkpoint 用最终补偿评估脚本复核，确认训练期指标排序与最终评估方向一致。
+
+产出文件：
+
+- `train/physics_loss.py` 的未归一化远场接口或等价工具函数。
+- `train/train_multiplane.py` 的真实指标 checkpoint 选择逻辑。
+- `result/logs/cycle41_unnormalized_strehl_checkpoint_*.md`
+- `result/metrics/cycle41_unnormalized_strehl_smoke*_history.csv`
+- `models/cycle41_*_best_strehl*.pth` 或 smoke 权重。
+
+完成标准：训练日志中的 `val_strehl_ratio` 不再因峰值归一化退化；best-Strehl checkpoint 可被最终评估脚本正常读取，并且训练期选择方向与最终未归一化 Strehl/主瓣指标一致。
+
+### Cycle 42：焦平面/焦前双分支特征融合（已完成）
+
+研究目的：在 Cycle 35 多平面收益和 attribution 结果基础上，避免把焦平面与焦前图像简单堆叠为普通输入通道，转而显式学习两类观测的互补信息。该方向直接对齐 Hou 2019 与 Xie 2024 关于非焦平面/焦前图像包含更多相位线索的文献启发。
+
+主要任务：
+
+- 设计轻量双分支模型：焦平面图像和焦前图像分别进入 encoder，再通过 feature fusion、gating 或注意力权重融合。
+- 与当前 `MultiPlanePhaseCNN` 的简单通道堆叠方式公平对比，保持数据集、训练轮次、随机种子和损失配置一致。
+- 在验证阶段使用 Cycle 41 修复后的未归一化 Strehl/主瓣指标选择 checkpoint。
+- 输出相位 RMSE、逐通道 RMSE、残余相位 RMSE、主瓣能量、Strehl 比、合成效率和 attribution 对比。
+- 若双分支模型没有提升，应作为负结果保留，说明当前多平面收益主要来自额外传播约束或冗余观测，而非更强特征融合。
+
+产出文件：
+
+- `train/models.py` 中的双分支多平面模型，或独立模型模块。
+- `train/train_multiplane_fusion.py` 或在 `train/train_multiplane.py` 中新增模型选择入口。
+- `result/logs/cycle42_multiplane_fusion_*.md`
+- `result/metrics/cycle42_multiplane_fusion_summary.csv`
+- `result/figures/cycle42_multiplane_fusion_*.png`
+- `models/cycle42_*_best_*.pth`
+
+完成标准：已完成。Cycle42 `dual_plane_fusion_cnn` 以 `5.77M` 参数超过 Cycle41 简单双通道 `deep_residual_cnn` 的 `11.34M` 参数模型。paired 评估中，`cycle42_best_rmse` 的主瓣能量占比 `0.525304`、Strehl `0.682690`、合成效率 `0.795854`、残余相位 RMSE `0.892309 rad`，均优于 Cycle41 的 `0.524967`、`0.670898`、`0.795033`、`0.896828 rad`。因此“焦平面/焦前显式融合优于简单通道堆叠”阶段性成立。
+
+### Cycle 43：双分支解释性与鲁棒性补强
+
+研究目的：在 Cycle42 正结果基础上，验证双分支门控融合是否真的利用了焦前图像的局部相位线索，并判断该收益在噪声扰动下是否稳定。该周期对齐 Xie 2024 的“误差统计 + attribution map + 噪声鲁棒性曲线”证据链。
+
+主要任务：
+
+- 对 Cycle41 简单双通道堆叠模型和 Cycle42 双分支融合模型做同样样本集合的 attribution/saliency 分析。
+- 分别统计焦平面分支和焦前分支的梯度能量占比、top 10% 能量集中度和平均半径。
+- 对 Cycle42 做探测器噪声或输入强度噪声扫描，输出主瓣能量、Strehl、合成效率和残余相位 RMSE 退化曲线。
+- 若 attribution 显示焦前分支贡献更明确，且噪声下指标不明显劣化，则将 Cycle42 固定为论文主模型。
+
+产出文件：
+
+- `result/logs/cycle43_dual_plane_attribution_*.md`
+- `result/metrics/cycle43_dual_plane_attribution_*.csv`
+- `result/metrics/cycle43_dual_plane_noise_robustness_*.csv`
+- `result/figures/cycle43_dual_plane_attribution_*.png`
+- `result/figures/cycle43_dual_plane_noise_robustness_*.png`
+
+完成标准：明确判断 Cycle42 正结果是否具有物理解释和噪声稳定性；若成立，后续进入论文主图、主表和讨论组织。
 
 ## 论文主线建议
 
@@ -318,7 +414,7 @@ L_total = L_phase + lambda_phy * L_farfield
 - 当前最优模型的补偿物理指标。
 - 更大规模数据和离焦图像对比。
 - 与已有深度学习 CBC 文献的公平讨论。
-- 更充分的消融实验。
+- 更充分的模型改进与消融实验，特别是六边形对称增强、补偿质量损失调度和补偿感知模型结构。
 - 更规范的图表和论文写作。
 
 ## 文件管理说明
@@ -327,7 +423,7 @@ L_total = L_phase + lambda_phy * L_farfield
 
 ## 下一步建议
 
-1. 先执行 Cycle 27，补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的补偿物理指标。
-2. 再执行 Cycle 28，在当前最优残差物理约束路线中测试周期相位损失。
-3. Cycle 29 与 Cycle 30 分别处理数据规模和离焦图像两个可能显著降低 RMSE 的方向。
-4. Cycle 31 到 Cycle 34 面向鲁棒性、论文图表、投稿稿和目标期刊筛选。
+1. 下一步执行 Cycle 43：对 Cycle42 与 Cycle41 做 attribution 对比，重点检查焦前分支是否提供更局部、更可分的相位线索。
+2. 对 Cycle42 做噪声鲁棒性扫描，输出 Strehl、主瓣能量、合成效率和残余 RMSE 的退化曲线。
+3. 后续优化方向继续保持为“正确物理指标 + 聪明信息融合 + 可解释证据”，暂不把更大模型、继续扩大 `lambda_comp` 网格或复跑同配置作为默认方向。
+4. 若 Cycle43 支撑 Cycle42，则固定 Cycle42/Cycle37 双主模型进入论文图表和讨论整理。

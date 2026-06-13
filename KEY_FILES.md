@@ -18,7 +18,7 @@
   - 明确项目目标已调整为形成具备一区或二区投稿潜力的论文。
   - 将主线确定为“7 光束多路相干合成下基于傅里叶光学约束的 CNN 相位误差反演”。
   - 恢复 `Cycle` 管理方式，但 Cycle 只作为任务分割和实验批次记录，不绑定日期或硬性截止时间。
-  - 从 Cycle 27 到 Cycle 34 规划主模型补偿指标、周期损失验证、大规模数据、离焦图像、鲁棒训练、论文图表、投稿稿和期刊筛选。
+  - 从 Cycle 27 到 Cycle 43 规划主模型补偿指标、周期损失验证、大规模数据、多平面输入、六边形对称增强、补偿质量损失调度、checkpoint 选择、未归一化 Strehl 修复、焦平面/焦前双分支融合，以及后续解释性与鲁棒性补强。
 - 使用建议：
   - 每次修改研究路线、目标期刊定位或论文主结论后，应优先同步修改这个文件。
   - 新 Cycle 是否继续推进，以能否增强一区/二区论文证据链为判断标准。
@@ -268,10 +268,26 @@
   - `FarFieldPhaseDataset`：读取远场图像和 `[sin(phi), cos(phi)]` 标签。
   - `split_dataset`：用固定随机种子划分训练集、验证集和测试集。
   - `build_dataloaders`：返回训练、验证、测试三个 DataLoader 和划分信息。
+- 当前增强能力：
+  - `augment_mode="noise"`：训练集随机探测器噪声增强。
+  - `augment_mode="hex"`：训练集七光束六边形对称增强。
+  - 增强只作用于训练集，验证集和测试集保持干净。
 - 当前默认格式：
   - 输入图像：`[N, H, W]`。
   - 网络输入：`[batch, 1, H, W]`。
   - 标签：`[N, 2 * num_phases]`。
+
+### `train/hexagonal_augmentation.py`
+
+- 地址：`D:\CBC_AI\train\hexagonal_augmentation.py`
+- 作用：Cycle 32 新增的七光束六边形物理对称增强模块。
+- 当前功能：
+  - 对远场图像做 `60°` 倍数旋转，并同步循环重排外圈 6 路 sin/cos 标签。
+  - 对远场图像做左右镜像，并同步执行外圈通道反向映射。
+  - 支持单平面 `[H, W]` 和多平面 `[P, H, W]` 图像。
+- 当前用途：
+  - 配合 `train/train_deep_residual_final.py --augment-mode hex` 做 Cycle 32 模型改进实验。
+  - 重点观察逐通道 RMSE、通道不平衡和补偿物理指标是否改善。
 
 ### `train/phase_metrics.py`
 
@@ -297,6 +313,7 @@
   - `WidePhaseCNN`：更宽的三层卷积结构，并使用自适应池化降低全连接层参数量。
   - `ResidualPhaseCNN`：残差连接 + 自适应池化的候选结构。
   - `CBCPhaseLiteCNN`：面向 CBC 远场条纹图像的自研轻量模型，包含深度可分离残差块、空间/通道门控和多尺度池化回归头。
+  - `DualPlaneFusionPhaseCNN`：Cycle42 新增焦平面/焦前双分支门控融合模型，当前补偿质量主模型使用该结构。
   - 输入：单通道远场光强图。
   - 双光束输出：`[sin(phi), cos(phi)]`。
   - 7 光束输出：设置 `output_dim=12`，对应 6 路相对相位的 `sin/cos` 编码。
@@ -824,5 +841,9 @@ L_total = L_phase + lambda_phy * L_farfield
 - Cycle 27：已补齐 `residual_cnn + physics loss, lambda_phy=0.05` 的补偿物理指标，结论见 `result/logs/cycle27_residual_physics_compensation_2026-06-11.md`。
 - Cycle 28：在残差主线上测试周期相位损失，并同时观察相位 RMSE 与补偿物理指标。
 - Cycle 29：设计并运行更大规模七光束数据集实验。
-- Cycle 30：生成焦前/离焦图像数据集并比较相位反演效果。
-- Cycle 31 到 Cycle 34：依次推进鲁棒训练、论文图表、投稿稿和目标期刊筛选。
+- Cycle 30：已生成焦前/离焦图像数据集并比较相位反演效果。
+- Cycle 32 到 Cycle 40：已完成六边形对称增强、补偿质量损失调度、多平面 7cm 主模型、lambda_comp 扫描、双 checkpoint 和显式指标 checkpoint 工具验证。
+- Cycle 41：优先修复未归一化 torch 远场/Strehl 验证函数，使训练期 checkpoint 选择与最终补偿评估一致。
+- Cycle 42：已完成焦平面/焦前双分支特征融合，`cycle42_best_rmse` 超过 Cycle41，当前补偿质量主模型更新为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`。
+- Cycle 43：下一步做 Cycle42 attribution 解释性分析和噪声鲁棒性验证。
+- 当前默认不继续盲目扩大 `lambda_comp` 网格，也不把更大模型作为下一阶段主方向。

@@ -2,7 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
+
+from train.hexagonal_augmentation import apply_hexagonal_augmentation
 
 
 class FarFieldPhaseDataset(Dataset):
@@ -16,10 +18,11 @@ class FarFieldPhaseDataset(Dataset):
     后续扩展到多束时，可以使用 [sin(phi_1), cos(phi_1), ...] 的形式。
     """
 
-    def __init__(self, image_path, label_path, expected_size=None, augment=False):
+    def __init__(self, image_path, label_path, expected_size=None, augment=False, augment_mode="noise"):
         self.image_path = Path(image_path)
         self.label_path = Path(label_path)
         self.augment = augment
+        self.augment_mode = augment_mode
 
         self.images = np.load(self.image_path)
         self.labels = np.load(self.label_path)
@@ -60,11 +63,13 @@ class FarFieldPhaseDataset(Dataset):
         image = self.images[index].copy()
         label = self.labels[index].copy()
         
-        if self.augment and np.random.rand() > 0.5:
+        if self.augment and self.augment_mode == "noise" and np.random.rand() > 0.5:
             # 随机噪声增强
             noise = np.random.randn(*image.shape) * 0.01
             image = image + noise
             image = np.clip(image, 0, None)
+        elif self.augment and self.augment_mode == "hex":
+            image, label = apply_hexagonal_augmentation(image, label)
         
         # 单平面 [H,W] -> [1,H,W], 多平面 [P,H,W] 保持
         if image.ndim == 2:
@@ -110,6 +115,7 @@ def build_dataloaders(
     expected_size=(160, 160),
     num_workers=0,
     augment_train=False,
+    augment_mode="noise",
 ):
     """构建训练、验证、测试 DataLoader。"""
     dataset = FarFieldPhaseDataset(
@@ -124,9 +130,16 @@ def build_dataloaders(
         val_ratio=val_ratio,
         seed=seed,
     )
-    
+
     if augment_train:
-        train_set.dataset.augment = True
+        train_dataset = FarFieldPhaseDataset(
+            image_path=image_path,
+            label_path=label_path,
+            expected_size=expected_size,
+            augment=True,
+            augment_mode=augment_mode,
+        )
+        train_set = Subset(train_dataset, train_set.indices)
 
     train_loader = DataLoader(
         train_set,

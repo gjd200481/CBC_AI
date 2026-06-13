@@ -100,7 +100,7 @@ class TwoBeamFourierOptics(nn.Module):
     def _gaussian_envelope(x_grid, y_grid, center_x, center_y, waist):
         return torch.exp(-((x_grid - center_x) ** 2 + (y_grid - center_y) ** 2) / waist**2)
 
-    def reconstruct_from_phase(self, phase):
+    def reconstruct_from_phase(self, phase, normalize=True):
         """根据相位重建裁剪后的归一化远场光强。"""
         if phase.ndim == 2 and phase.shape[-1] == 1:
             phase = phase[:, 0]
@@ -120,13 +120,14 @@ class TwoBeamFourierOptics(nn.Module):
 
         far_field = torch.fft.fftshift(torch.fft.fft2(near_field), dim=(-2, -1))
         intensity = torch.abs(far_field) ** 2
-        intensity = normalize_intensity(intensity, eps=self.eps)
+        if normalize:
+            intensity = normalize_intensity(intensity, eps=self.eps)
         return crop_center_torch(intensity, self.crop_size).to(dtype=torch.float32)
 
-    def reconstruct_from_sin_cos(self, sin_cos_values):
+    def reconstruct_from_sin_cos(self, sin_cos_values, normalize=True):
         """根据 [sin(phi), cos(phi)] 重建裁剪后的归一化远场光强。"""
         phase = decode_sin_cos(sin_cos_values)
-        return self.reconstruct_from_phase(phase)
+        return self.reconstruct_from_phase(phase, normalize=normalize)
 
     def forward(self, sin_cos_values):
         return self.reconstruct_from_sin_cos(sin_cos_values)
@@ -194,7 +195,7 @@ class SevenBeamFourierOptics(nn.Module):
     def _gaussian_envelope(x_grid, y_grid, center_x, center_y, waist):
         return torch.exp(-((x_grid - center_x) ** 2 + (y_grid - center_y) ** 2) / waist**2)
 
-    def reconstruct_from_phase(self, phases):
+    def reconstruct_from_phase(self, phases, normalize=True):
         """根据 6 路相对相位重建裁剪后的归一化远场光强。"""
         if phases.ndim != 2 or phases.shape[-1] != 6:
             raise ValueError(f"Expected phases with shape [B, 6], got {phases.shape}")
@@ -212,13 +213,14 @@ class SevenBeamFourierOptics(nn.Module):
 
         far_field = torch.fft.fftshift(torch.fft.fft2(near_field), dim=(-2, -1))
         intensity = torch.abs(far_field) ** 2
-        intensity = normalize_intensity(intensity, eps=self.eps)
+        if normalize:
+            intensity = normalize_intensity(intensity, eps=self.eps)
         return crop_center_torch(intensity, self.crop_size).to(dtype=torch.float32)
 
-    def reconstruct_from_sin_cos(self, sin_cos_values):
+    def reconstruct_from_sin_cos(self, sin_cos_values, normalize=True):
         """根据 12 维 sin/cos 编码重建裁剪后的归一化远场光强。"""
         phases = decode_sin_cos(sin_cos_values)
-        return self.reconstruct_from_phase(phases)
+        return self.reconstruct_from_phase(phases, normalize=normalize)
 
     def forward(self, sin_cos_values):
         return self.reconstruct_from_sin_cos(sin_cos_values)
@@ -259,3 +261,75 @@ class FarFieldConsistencyLoss(nn.Module):
             return F.l1_loss(reconstructed, target_images)
 
         raise ValueError(f"Unknown loss_type: {self.loss_type}")
+
+
+class CompensationQualityLoss(nn.Module):
+    """补偿质量损失：直接优化补偿后的Strehl比和主瓣能量占比。
+    
+    该损失函数通过以下步骤计算：
+    1. 从预测相位和真实相位计算补偿后残余相位
+    2. 用残余相位重建补偿后远场
+    3. 计算补偿后远场的Strehl比和主瓣能量占比
+    4. 返回负Strehl比和负主瓣能量占比的加权和（最小化负值=最大化质量）
+    """
+    
+    def __init__(self, optics_model, main_lobe_radius=3, strehl_weight=1.0, mainlobe_weight=1.0):
+        super().__init__()
+        self.optics_model = optics_model
+        self.main_lobe_radius = main_lobe_radius
+        self.strehl_weight = strehl_weight
+        self.mainlobe_weight = mainlobe_weight
+        
+        # 计算理想相干峰值强度（7束完全同相）
+        ideal_phases = torch.zeros(1, 6)
+        ideal_farfield = self.optics_model.reconstruct_from_phase(ideal_phases, normalize=False)
+        self.register_buffer("ideal_peak", ideal_farfield.max())
+        
+        # 预计算主瓣mask
+        crop_size = self.optics_model.crop_size
+        y, x = torch.meshgrid(
+            torch.arange(crop_size, dtype=torch.float32),
+            torch.arange(crop_size, dtype=torch.float32),
+            indexing='ij'
+        )
+        center = crop_size // 2
+        dist = torch.sqrt((x - center) ** 2 + (y - center) ** 2)
+        self.register_buffer("main_lobe_mask", (dist <= main_lobe_radius).float())
+    
+    def forward(self, pred_sin_cos, true_sin_cos):
+        """
+        Args:
+            pred_sin_cos: 预测的sin/cos编码 [B, 12]
+            true_sin_cos: 真实的sin/cos编码 [B, 12]
+        
+        Returns:
+            loss: 补偿质量损失（负Strehl比 + 负主瓣能量占比）
+        """
+        # 解码相位
+        pred_phases = decode_sin_cos(pred_sin_cos)
+        true_phases = decode_sin_cos(true_sin_cos)
+        
+        # 计算补偿后残余相位（周期性差值）
+        residual_phases = torch.atan2(
+            torch.sin(true_phases - pred_phases),
+            torch.cos(true_phases - pred_phases)
+        )
+        
+        # 重建补偿后远场
+        compensated_farfield = self.optics_model.reconstruct_from_phase(residual_phases, normalize=False)
+        
+        # 计算Strehl比
+        peak_intensity = compensated_farfield.amax(dim=(1, 2))
+        ideal_peak = self.ideal_peak.to(compensated_farfield.device).clamp_min(1e-8)
+        strehl_ratio = peak_intensity / ideal_peak
+        
+        # 计算主瓣能量占比
+        main_lobe_mask = self.main_lobe_mask.to(compensated_farfield.device)
+        main_lobe_energy = (compensated_farfield * main_lobe_mask).sum(dim=(1, 2))
+        total_energy = compensated_farfield.sum(dim=(1, 2))
+        main_lobe_ratio = main_lobe_energy / (total_energy + 1e-8)
+        
+        # 损失 = 负Strehl比 + 负主瓣能量占比（最小化负值=最大化质量）
+        loss = -self.strehl_weight * strehl_ratio.mean() - self.mainlobe_weight * main_lobe_ratio.mean()
+        
+        return loss

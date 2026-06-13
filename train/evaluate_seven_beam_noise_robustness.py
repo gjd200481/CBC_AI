@@ -34,7 +34,14 @@ def load_seven_beam_model(model_path, device):
     """
     checkpoint = torch.load(model_path, map_location=device)
     model_name = checkpoint.get("model_name", "simple_cnn")
-    model = build_phase_model(model_name=model_name, image_size=160, output_dim=12).to(device)
+    in_channels = checkpoint.get("in_channels", 1)
+    model = build_phase_model(
+        model_name=model_name,
+        image_size=160,
+        output_dim=12,
+        in_channels=in_channels,
+    ).to(device)
+    model.expected_in_channels = int(in_channels)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return model

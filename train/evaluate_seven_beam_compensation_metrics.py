@@ -65,7 +65,21 @@ def predict_labels(model, images, batch_size, device):
     with torch.no_grad():
         for start in range(0, len(images), batch_size):
             batch = images[start:start + batch_size]
-            batch_tensor = torch.as_tensor(batch, dtype=torch.float32).unsqueeze(1).to(device)
+            batch_tensor = torch.as_tensor(batch, dtype=torch.float32)
+            if batch_tensor.ndim == 3:
+                batch_tensor = batch_tensor.unsqueeze(1)
+            elif batch_tensor.ndim != 4:
+                raise ValueError(f"Expected batch [B,H,W] or [B,C,H,W], got {tuple(batch_tensor.shape)}")
+            expected_in_channels = getattr(model, "expected_in_channels", batch_tensor.shape[1])
+            if batch_tensor.shape[1] != expected_in_channels:
+                if expected_in_channels == 1:
+                    batch_tensor = batch_tensor[:, :1]
+                else:
+                    raise ValueError(
+                        f"Model expects {expected_in_channels} channels, "
+                        f"but batch has {batch_tensor.shape[1]} channels."
+                    )
+            batch_tensor = batch_tensor.to(device)
             preds.append(model(batch_tensor).cpu().numpy())
 
     return np.concatenate(preds, axis=0)

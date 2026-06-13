@@ -428,9 +428,18 @@ result/metrics/cycle08_lambda_sweep_2026-06-07.csv
 | Cycle 29 | 七光束数据规模扩展 | 比较 `1024 -> 5000 -> 10000` 样本对 RMSE 和补偿指标的影响 | 得到数据规模是否是主要瓶颈的定量结论 |
 | Cycle 30 | 焦前/离焦图像路线 | 生成并训练焦平面、焦前、离焦图像数据 | 判断离焦输入是否成为论文主线创新点 |
 | Cycle 31 | 噪声增强与稳健训练 | 解决物理约束模型对探测器噪声不稳定的问题 | 输出统一鲁棒性曲线和可发表结论 |
-| Cycle 32 | 论文主图与表格定稿 | 整理 RMSE、补偿指标、鲁棒性、负结果消融图表 | 论文初稿可直接引用主图和主表 |
-| Cycle 33 | 论文初稿升级 | 将中文阶段性稿升级为接近期刊格式的论文稿 | 形成可继续翻译、排版或套模板的投稿稿 |
-| Cycle 34 | 投稿期刊筛选 | 筛选一区/二区候选期刊并反向检查补实验 | 得到目标期刊列表和补实验清单 |
+| Cycle 32 | 六边形对称增强与通道均衡 | 利用 7 光束阵列旋转/镜像对称性做标签感知增强 | 判断是否降低通道不平衡并提升补偿指标 |
+| Cycle 33 | 补偿质量损失调度与单位圆约束 | 用 warmup 方式稳定加入 Strehl/主瓣能量损失，并约束 sin/cos 单位圆 | 判断是否在保持 RMSE 的同时提升 Strehl、主瓣能量和合成效率 |
+| Cycle 34 | 补偿损失 warmup 与单位圆约束稳定性扫描 | 固定主模型，扫描 `lambda_unit` 与 `comp_warmup_epochs` | 得到当前主训练损失的推荐参数 |
+| Cycle 35 | 焦平面/焦前 attribution 解释性分析 | 比较单焦平面与焦前/多平面输入的 saliency/attribution map | 判断焦前图像是否提供更局部、更可分的相位线索 |
+| Cycle 36 | 多平面 warmup/unit 融合验证 | 将单平面 warmup5 + unit0.01 迁移到 7cm 多平面训练 | 判断补偿调度是否能与多平面收益叠加 |
+| Cycle 37 | 多平面 lambda_comp 扫描 | 固定 7cm 多平面输入，扫描补偿质量损失权重 | 区分补偿质量最优与相位精度最优模型 |
+| Cycle 38 | 双主模型证据链整理 | 汇总当前补偿质量主模型与相位精度主模型 | 形成可引用总表和后续选择策略入口 |
+| Cycle 39 | checkpoint 选择策略验证 | 同次训练保存 best-RMSE 与 best-comp checkpoint | 判断选择策略能否缓解 RMSE 与补偿质量分歧 |
+| Cycle 40 | 显式指标 checkpoint 选择工具验证 | 保存 best-Strehl 与 best-main-lobe checkpoint | 验证训练内显式补偿指标是否可作为选择依据 |
+| Cycle 41 | 未归一化 Strehl 指标修复 | 实现与最终评估一致的 torch 远场/Strehl 验证 | 让训练期 checkpoint 选择真正对齐下游补偿质量 |
+| Cycle 42 | 焦平面/焦前双分支特征融合 | 用焦平面与焦前图像分别编码再融合 | 判断更聪明的多平面融合是否优于简单通道堆叠 |
+| Cycle 43 | 双分支解释性与鲁棒性补强 | 对 Cycle42 做 attribution 与噪声鲁棒性验证 | 判断双分支正结果是否具有物理解释和稳定性 |
 
 Cycle 27 已完成。关键输出：
 
@@ -467,15 +476,182 @@ dataset/seven_beam/multiplane_0_-0.05/
 dataset/seven_beam/multiplane_0_-0.07/
 ```
 
-Cycle 31 结论：受Xie et al. 2024启发验证多平面输入策略。Smoke测试（1k数据）显示双平面RMSE比单平面降低 **15.7%**。但完整实验（10k数据）显示多平面改善仅 **0.7-0.8%**。关键发现：多平面收益与数据规模负相关，在当前10k + 11.3M参数配置下，单焦平面已包含足够信息。焦前距离3cm/5cm/7cm差异仅1.4%，推荐5cm对标文献。**阶段性判断**：多平面作为补充实验(supplementary)，证明当前配置已接近单焦平面表示上限，不作为主线创新。项目进入论文写作阶段（Cycle 32-34）。
+Cycle 31 结论：受Xie et al. 2024启发验证多平面输入策略。Smoke测试（1k数据）显示双平面RMSE比单平面降低 **15.7%**。但完整实验（10k数据）显示多平面改善仅 **0.7-0.8%**。关键发现：多平面收益与数据规模负相关，在当前10k + 11.3M参数配置下，单焦平面已包含足够信息。焦前距离3cm/5cm/7cm差异仅1.4%，推荐5cm对标文献。**阶段性判断**：多平面作为补充实验(supplementary)，证明当前配置已接近单焦平面表示上限，不作为主线创新。项目暂不进入论文收束阶段，下一阶段继续围绕模型二次改进推进（Cycle 32-34）。
+
+Cycle 32 已完成。关键输出：
+
+```text
+result/logs/cycle32_hex_symmetry_augmentation_2026-06-11.md
+result/metrics/cycle32_deep_hex_aug_30epoch_history.csv
+result/metrics/cycle32_hex_compensation_summary.csv
+result/figures/cycle32_hex_compensation_comparison.png
+models/cycle32_deep_hex_aug_30epoch.pth
+```
+
+Cycle 32 结论：七光束六边形对称增强没有超过 Cycle 30 主模型。`cycle32_hex_aug` 测试 RMSE 为 `0.967701 rad`；统一 256 样本补偿评估中，主瓣能量占比 `0.510868`、Strehl 比 `0.610301`、合成效率 `0.772100`，均略低于 `cycle30_deep_final`。该 Cycle 作为负结果保留：在当前 10k 数据 + 11.3M 深度残差网络配置下，显式几何对称增强没有直接转化为补偿质量收益。
+
+Cycle 33 已完成。关键输出：
+
+```text
+result/logs/cycle33_comp_warmup_unit_2026-06-11.md
+result/metrics/cycle33_deep_comp_warmup_unit_30epoch_history.csv
+result/metrics/cycle33_warmup_unit_compensation_summary.csv
+result/figures/cycle33_warmup_unit_compensation_comparison.png
+models/cycle33_deep_comp_warmup_unit_30epoch.pth
+```
+
+Cycle 33 结论：补偿质量 warmup + 单位圆约束取得小幅正结果。`cycle33_warmup_unit` 测试 RMSE 为 `0.953182 rad`；统一补偿评估中，主瓣能量占比 `0.514104`、合成效率 `0.777395`、残余相位 RMSE `0.909709 rad`，均略优于 Cycle 30 的 `0.513536`、`0.776529`、`0.913416 rad`；Strehl 比 `0.623762` 与 Cycle 30 的 `0.624081` 基本持平。
+
+Cycle 34 已完成：单位圆约束权重扫描 + warmup 节奏扫描。关键输出：
+
+```text
+result/logs/cycle34_unit_weight_scan_2026-06-11.md
+result/logs/cycle34_unit_weight_scan_stage1_2026-06-11.md
+result/logs/cycle34_warmup_scan_2026-06-12.md
+result/metrics/cycle34_unit_weight_scan_summary.csv
+result/metrics/cycle34_warmup_scan_summary.csv
+result/figures/cycle34_unit_weight_scan_comparison.png
+result/figures/cycle34_warmup_scan_comparison.png
+models/cycle34_unit_0p003_warmup10_30epoch.pth
+models/cycle34_unit_0p03_warmup10_30epoch.pth
+models/cycle34_warmup5_unit0p01_30epoch.pth
+models/cycle34_warmup15_unit0p01_30epoch.pth
+```
+
+Cycle 34 结论：扫描 `lambda_unit=0.003/0.01/0.03` 后，`lambda_unit=0.01` 是当前最佳折中点。固定 `lambda_unit=0.01` 后继续扫描 `comp_warmup_epochs=5/10/15`，其中 `warmup5` 在统一 256 样本补偿评估中取得最高主瓣能量占比 `0.514117`、最高 Strehl 比 `0.626688` 和最高合成效率 `0.777425`；`warmup10` 的残余相位 RMSE 最低，为 `0.909709 rad`；`warmup15` 没有带来进一步收益。下一阶段默认推荐参数为 `lambda_comp=0.5, comp_warmup_epochs=5, lambda_unit=0.01, augment_mode=noise`。
+
+Cycle 35 已完成第一批 attribution 工具验证、小样本分析，以及 7cm 多平面正式训练与 paired 补偿评估。关键输出：
+
+```text
+train/analyze_phase_attribution.py
+result/logs/cycle35_attribution_initial_2026-06-12.md
+result/logs/cycle35_multiplane_7cm_attribution_2026-06-12.md
+models/cycle35_multiplane_7cm_10k_30epoch.pth
+result/metrics/cycle35_multiplane_7cm_10k_30epoch_history.csv
+result/metrics/cycle35_attribution_cycle30.csv
+result/metrics/cycle35_attribution_warmup5.csv
+result/metrics/cycle35_attribution_multiplane_smoke.csv
+result/metrics/cycle35_attribution_overview.csv
+result/metrics/cycle35_attribution_warmup5_64.csv
+result/metrics/cycle35_attribution_multiplane_7cm_64.csv
+result/metrics/cycle35_attribution_overview_64.csv
+result/metrics/cycle35_multiplane_7cm_paired_compensation_summary.csv
+result/figures/cycle35_attribution_cycle30/
+result/figures/cycle35_attribution_warmup5/
+result/figures/cycle35_attribution_multiplane_smoke/
+result/figures/cycle35_attribution_warmup5_64/
+result/figures/cycle35_attribution_multiplane_7cm_64/
+result/figures/cycle35_multiplane_7cm_paired_compensation.png
+```
+
+Cycle 35 结论：7cm 多平面正式模型测试 RMSE 为 `0.940678 rad`，优于当前单平面 warmup5 的 `0.949785 rad`。64 样本 attribution 显示，多平面模型对焦平面/焦前平面的梯度能量约为 `51.3% / 48.7%`，说明焦前通道确实被使用；但其 saliency 平均半径更大（`22.85 px` vs 单平面 `17.92 px`），top 10% 能量集中度更低（`0.803` vs 单平面 `0.909`），因此收益更可能来自额外传播约束或冗余观测，而不是更局部的相位线索。paired 补偿评估中，`multiplane_7cm` 的主瓣能量占比 `0.524718`、Strehl 比 `0.658185`、合成效率 `0.794436`、残余相位 RMSE `0.882901 rad`，均优于 `cycle30_deep_final` 和 `warmup5`。
+
+Cycle 36 已完成：多平面 7cm + warmup5/unit0.01 融合验证。关键输出：
+
+```text
+result/logs/cycle36_multiplane_warmup_unit_2026-06-12.md
+models/cycle36_multiplane_7cm_warmup5_unit0p01_30epoch.pth
+result/metrics/cycle36_multiplane_7cm_warmup5_unit0p01_30epoch_history.csv
+result/metrics/cycle36_multiplane_warmup_paired_compensation_summary.csv
+result/figures/cycle36_multiplane_warmup_paired_compensation.png
+```
+
+Cycle 36 结论：`multiplane_7cm_warmup5_unit` 测试 RMSE 为 `0.939758 rad`，比原始 `multiplane_7cm` 的 `0.940678 rad` 略好；但 paired 补偿指标下降，主瓣能量占比 `0.522417`、Strehl 比 `0.654960`、合成效率 `0.790882`、残余相位 RMSE `0.885590 rad`，均不如原始 `multiplane_7cm` 的 `0.524718`、`0.658185`、`0.794436`、`0.882901 rad`。因此单平面的 warmup/unit 策略不能直接迁移为多平面默认设置，当前综合最佳仍是 Cycle 35 的 `models/cycle35_multiplane_7cm_10k_30epoch.pth`。
+
+Cycle 37 已完成：固定 7cm 多平面输入，扫描 `lambda_comp=0.3/0.4/0.5`。关键输出：
+
+```text
+result/logs/cycle37_multiplane_lambda_comp_scan_2026-06-12.md
+models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth
+models/cycle37_multiplane_7cm_lambda_comp0p4_30epoch.pth
+result/metrics/cycle37_lambda_comp_scan_summary.csv
+result/figures/cycle37_lambda_comp_scan.png
+```
+
+Cycle 37 结论：`lambda_comp=0.3` 测试 RMSE 最低，为 `0.931945 rad`，补偿后残余相位 RMSE 也最低，为 `0.865573 rad`；`lambda_comp=0.5` 的主瓣能量占比 `0.524718`、Strehl 比 `0.658185`、合成效率 `0.794436` 仍为最高；`lambda_comp=0.4` 没有成为理想折中点。后续应保留两个代表模型：补偿质量主模型使用 `models/cycle35_multiplane_7cm_10k_30epoch.pth`，相位精度/残余 RMSE 主模型使用 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
+
+Cycle 38 已完成：双主模型证据链整理，并实现多平面训练的双 checkpoint 选择入口。关键输出：
+
+```text
+result/logs/cycle38_dual_model_evidence_chain_2026-06-12.md
+result/metrics/cycle38_dual_model_evidence_summary.csv
+result/figures/cycle38_dual_model_evidence_summary.png
+models/cycle38_checkpoint_selection_smoke3_rmse.pth
+models/cycle38_checkpoint_selection_smoke3_comp.pth
+result/metrics/cycle38_checkpoint_selection_smoke3_history.csv
+```
+
+Cycle 38 结论：当前核心矛盾不是模型完全无效，而是 checkpoint 选择指标不同会偏向不同目标。已在 `train/train_multiplane.py` 中增加双 checkpoint 保存：`--model-path` 按 `val_rmse_rad` 最低保存，`--comp-model-path` 按验证集 `comp_loss` 最低保存。3 epoch smoke 已验证保存逻辑正常。下一次正式实验应复跑 30 epoch，并比较 RMSE 选择与补偿选择两种 checkpoint 的 paired 补偿表现。
+
+Cycle 39 已完成：7cm 多平面 `lambda_comp=0.5` 正式复跑，同时保存 best-RMSE 与 best-comp checkpoint。关键输出：
+
+```text
+result/logs/cycle39_checkpoint_selection_2026-06-12.md
+models/cycle39_multiplane_7cm_comp0p5_best_rmse_30epoch.pth
+models/cycle39_multiplane_7cm_comp0p5_best_comp_30epoch.pth
+result/metrics/cycle39_checkpoint_selection_paired_summary.csv
+result/figures/cycle39_checkpoint_selection_paired.png
+```
+
+Cycle 39 结论：`cycle39_best_comp` 相比 `cycle39_best_rmse` 主瓣能量和合成效率略高，但 Strehl 与残余 RMSE 略低；两个 Cycle39 checkpoint 的残余相位 RMSE 都优于 Cycle35 的 `comp0p5_cycle35`，但 Cycle35 仍保持最高主瓣能量、最高 Strehl 和最高合成效率。checkpoint 选择策略有价值，但不足以单独解决“相位精度 vs 补偿能量”的权衡。当前仍保留双主模型：补偿质量主模型 `models/cycle35_multiplane_7cm_10k_30epoch.pth`，相位/残余 RMSE 主模型 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
+
+Cycle 40 已完成工具验证：`train_multiplane.py` 已支持保存 best-Strehl 与 best-main-lobe checkpoint，并通过 1 epoch smoke 生成四类 checkpoint。关键输出：
+
+```text
+result/logs/cycle40_metric_specific_checkpoint_selection_2026-06-12.md
+models/cycle40_metric_selection_smoke1_rmse.pth
+models/cycle40_metric_selection_smoke1_comp.pth
+models/cycle40_metric_selection_smoke1_strehl.pth
+models/cycle40_metric_selection_smoke1_main_lobe.pth
+result/metrics/cycle40_metric_selection_smoke1_history.csv
+```
+
+Cycle 40 结论：训练内 `SevenBeamFourierOptics.reconstruct_from_phase()` 会按峰值归一化远场，因此训练内 `val_strehl_ratio` 会退化接近 `1.0`，不能等价于最终评估脚本中基于未归一化远场的真实 Strehl。当前不应使用训练内 best-Strehl 做正式 checkpoint 选择；best-main-lobe 仍有参考价值，但不能替代真实 Strehl。下一步若继续模型改进，应先实现与最终评估一致的未归一化 torch 远场/Strehl 验证函数，再启动正式 best-Strehl checkpoint 实验。
+
+2026-06-12 路线修订：结合 Hou 2019、Mills 2022、Xie 2024 以及 Cycle35-40 的结果，后续优化方向从“更大的模型/更多网格搜索”转向“更正确的物理指标 + 更聪明的焦前/焦平面信息融合”。其中 Cycle 41 先修复未归一化 Strehl 和主瓣指标，使训练期 checkpoint 选择与最终补偿评估一致；Cycle 42 再在此基础上设计焦平面/焦前双分支融合模型，避免把多平面输入仅作为普通通道堆叠。
+
+Cycle 41 已完成：修复未归一化 Strehl / 主瓣指标，并完成 7cm 多平面正式 30 epoch 训练与 paired 评估。关键输出：
+
+```text
+result/logs/cycle41_unnormalized_strehl_checkpoint_2026-06-12.md
+train/plot_cycle41_literature_figure.py
+models/cycle41_multiplane_7cm_unorm_best_rmse_30epoch.pth
+models/cycle41_multiplane_7cm_unorm_best_comp_30epoch.pth
+models/cycle41_multiplane_7cm_unorm_best_strehl_30epoch.pth
+models/cycle41_multiplane_7cm_unorm_best_main_lobe_30epoch.pth
+result/metrics/cycle41_multiplane_7cm_unorm_30epoch_history.csv
+result/metrics/cycle41_unnormalized_strehl_paired_summary.csv
+result/figures/cycle41_unnormalized_strehl_paired.png
+result/figures/cycle41_literature_style_evidence.png
+```
+
+Cycle 41 结论：未归一化 torch 远场/Strehl 验证函数已与最终评估脚本对齐，训练期 `val_strehl_ratio` 不再退化为接近 `1.0`。正式 paired 评估中，`cycle41_best_strehl` 的主瓣能量占比为 `0.524967`、Strehl 为 `0.670898`、合成效率为 `0.795033`，均略优于 Cycle35 的 `0.524718`、`0.658185`、`0.794436`；但残余相位 RMSE 上升到 `0.896828 rad`，不如 Cycle37 comp0.3 的 `0.865573 rad`。因此补偿质量主模型更新为 `models/cycle41_multiplane_7cm_unorm_best_strehl_30epoch.pth`，相位/残余 RMSE 主模型仍为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。已新增仿文献综合证据图 `result/figures/cycle41_literature_style_evidence.png`，按方法修正、训练轨迹、下游指标和典型远场图样解释 Cycle41 正结果。
+
+Cycle 42 已完成：实现焦平面/焦前双分支门控融合模型，并完成 7cm 双平面正式 30 epoch 训练、paired 富指标评估和仿文献综合证据图。关键输出：
+
+```text
+result/logs/cycle42_dual_plane_fusion_2026-06-13.md
+train/plot_cycle42_literature_figure.py
+models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth
+models/cycle42_dual_plane_fusion_7cm_best_comp_30epoch.pth
+models/cycle42_dual_plane_fusion_7cm_best_strehl_30epoch.pth
+models/cycle42_dual_plane_fusion_7cm_best_main_lobe_30epoch.pth
+result/metrics/cycle42_dual_plane_fusion_7cm_30epoch_history.csv
+result/metrics/cycle42_dual_plane_fusion_paired_summary.csv
+result/metrics/cycle42_dual_plane_fusion_paired_detail.csv
+result/figures/cycle42_dual_plane_fusion_paired.png
+result/figures/cycle42_literature_style_fusion_evidence.png
+```
+
+Cycle 42 结论：`dual_plane_fusion_cnn` 参数量为 `5.77M`，小于 Cycle41 简单双通道 `deep_residual_cnn` 的 `11.34M`。正式 paired 评估中，`cycle42_best_rmse` 的主瓣能量占比为 `0.525304`、Strehl 为 `0.682690`、合成效率为 `0.795854`、残余相位 RMSE 为 `0.892309 rad`，相较 Cycle41 的 `0.524967`、`0.670898`、`0.795033`、`0.896828 rad` 同时改善。该结果说明焦平面/焦前显式分支融合优于简单通道堆叠，当前补偿质量主模型更新为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`；相位/残余 RMSE 主模型仍为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
 
 最新主线判断：
 
-- **Cycle 28 数据规模突破**：10k样本训练的 `residual_cnn + physics loss, lambda_phy=0.05` 最佳 checkpoint 测试 RMSE 为 `0.936 rad`，相比1k数据的 `0.983 rad` 降低 **4.8%**。
-- 当前最优相位 RMSE 来自 `cycle28_residual_10k`，测试 RMSE `0.936 rad`。
-- **相位RMSE与补偿质量矛盾持续存在**：10k模型相位RMSE更低，但补偿后Strehl比(0.640)、合成效率(0.777)略低于1k模型的Strehl比(0.653)、合成效率(0.783)。
-- 数据规模扩展有效但收益有限，说明单纯增加数据量不是唯一解决方案。
-- **下一步优先级**：实施补偿质量损失函数重构，直接优化Strehl比和主瓣能量，而非继续盲目扩大数据。
+- **当前双主模型已更新**：补偿质量主模型为 `models/cycle42_dual_plane_fusion_7cm_best_rmse_30epoch.pth`；相位/残余 RMSE 主模型为 `models/cycle37_multiplane_7cm_lambda_comp0p3_30epoch.pth`。
+- **相位 RMSE 与补偿质量矛盾持续存在**：更低 RMSE 不总能带来更高 Strehl、主瓣能量和合成效率，因此后续模型选择必须显式对齐下游补偿物理指标。
+- **焦平面/焦前显式融合成立**：Cycle42 以更小参数量超过 Cycle41，说明当前收益来自更合理的信息融合结构，而不是模型体量扩张。
+- **下一步优先级**：1）执行 Cycle 43，对 Cycle42 与 Cycle41 做 attribution 对比，检查双分支是否更有效利用焦前局部相位线索；2）对 Cycle42 做噪声鲁棒性评估，模仿 Xie 2024 的噪声扫描与任务指标退化曲线；3）若解释性和鲁棒性成立，则将 Cycle42 固定为论文主模型。
+- **明确禁止项**：不要使用当前训练内归一化 `val_strehl_ratio` 作为正式模型选择依据；不要继续盲目扩大 `lambda_comp` 网格；不要把“更大模型”作为下一阶段默认方向。
 - `cbc_lite_cnn` 与周期损失组合未超过残差物理约束路线，应作为负结果消融保留。
 - `cycleXX` 恢复作为任务分割方式，但不包含时间约束；历史与后续 Cycle 均应服务于一区/二区论文证据链。
 
