@@ -408,7 +408,7 @@ def main():
 
                 # 统计数据
                 ig_energy = np.sum(ig_attr_sin**2)
-                gradcam_peak = gradcam.max()
+                gradcam_peak = gradcam_sin.max()
 
                 summary_data.append({
                     'sample': i,
