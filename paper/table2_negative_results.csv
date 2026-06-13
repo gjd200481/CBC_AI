@@ -1,0 +1,4 @@
+﻿Cycle,Experiment,Model,Parameters,Test_RMSE_rad,Compensation_Quality,Conclusion
+26,CBC Lite CNN + Cyclic loss,CBCPhaseLiteCNN,1.8M,1.22,Not improved vs MSE,Cyclic loss ineffective on current architecture
+32,Hexagonal symmetry augmentation,DeepResidualPhaseCNN + hex aug,11.3M,0.968,Not improved vs Cycle 30,Geometric augmentation did not transfer to compensation gain
+28,Data scale 10k (compensation quality),ResidualPhaseCNN + Physics,3.12M,0.936,Lower than 1k model,Phase RMSE vs compensation quality inconsistency exposed

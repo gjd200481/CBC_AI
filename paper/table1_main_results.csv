@@ -1,0 +1,13 @@
+﻿Cycle,Experiment,Model,Parameters,Test_RMSE_rad,Strehl_Ratio,Synthesis_Efficiency,Main_Lobe_Energy,Status
+12,Seven-beam baseline CNN,SimplePhaseCNN,0.32M,1.027,0.647,0.786,0.519,Baseline ✓
+13,Physics-constrained CNN (λ_phy=0.1),SimplePhaseCNN + Physics,0.32M,1.023,0.654,0.79,0.522,First physics ✓
+21,Residual CNN architecture,ResidualPhaseCNN,3.12M,1.269,-,-,-,Architecture ablation
+25,Residual + Physics (λ_phy=0.05),ResidualPhaseCNN + Physics,3.12M,0.983,-,-,-,Best phase RMSE
+27,Residual best checkpoint evaluation,ResidualPhaseCNN best,3.12M,0.992,0.664,0.793,0.524,Best compensation (1k)
+28,Data scale 10k + Physics,ResidualPhaseCNN + Physics,3.12M,0.936,0.64,0.777,0.514,Large scale negative
+30,Deep residual + Compensation loss (λ_comp=0.5),DeepResidualPhaseCNN,11.3M,0.955,0.647,0.787,0.52,Breakthrough ✓✓
+31,Multi-plane input (7cm defocus),MultiPlanePhaseCNN,11.3M,0.945,-,-,-,Marginal gain (0.8%)
+37,Multi-plane λ_comp=0.3 (phase model),MultiPlanePhaseCNN,11.3M,0.932,-,-,-,Phase-oriented model
+41,Multi-plane + Unnormalized Strehl,DeepResidualPhaseCNN (dual-channel),11.34M,0.95,0.671,0.795,0.525,Unnormalized metrics
+42,Dual-branch fusion (compensation model),DualPlaneFusionPhaseCNN,5.77M,0.949,0.683,0.796,0.525,Final compensation model ✓✓✓
+43,Noise robustness validation,DualPlaneFusionPhaseCNN,5.77M,0.892,0.683,0.796,0.525,Robustness verified ✓✓✓

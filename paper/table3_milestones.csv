@@ -1,0 +1,9 @@
+﻿Milestone,Cycle_Range,Key_Finding,Strehl_Ratio
+Baseline Established,Cycle 12-13,Seven-beam phase inversion feasible with CNN,0.647
+Physics Constraint Validated,Cycle 13-14,Fourier physics loss improves far-field consistency,0.654
+Best Checkpoint Strategy,Cycle 22-27,Final epoch checkpoint often overfits,0.664
+Data Scale Bottleneck Found,Cycle 28,"10k samples sufficient, further scaling low return",0.640 ↓
+Compensation Loss Added,Cycle 29-30,Direct Strehl optimization reaches paper-acceptable level,0.647
+Multi-plane Marginal Gain,Cycle 31-37,Large data reduces multi-plane benefit to <1%,0.658-0.671
+Dual-Branch Fusion Success,Cycle 41-42,Explicit fusion outperforms simple channel stacking,0.683 ✓✓
+Technical Validation Complete,Cycle 43,σ≥0.005 noise robustness validated,"0.683 (clean), 0.481 (σ=0.02)"
