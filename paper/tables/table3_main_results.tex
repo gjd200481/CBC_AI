@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Main Results: Compensation Performance Comparison}
+\label{tab:main_results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Strehl} & \textbf{Main Lobe} & \textbf{Efficiency} & \textbf{Residual RMSE} \\
+ & Ratio & Energy & & (rad) \\
+\midrule
+Before Compensation & 0.385 & 0.362 & 0.536 & 1.804 \\
+Cycle 37 (Phase Model) & 0.653 & 0.520 & 0.788 & \textbf{0.866} \\
+Cycle 41 (Simple Stack) & 0.671 & 0.525 & 0.795 & 0.897 \\
+Cycle 42 (Dual-Branch) & \textbf{0.683} & \textbf{0.525} & \textbf{0.796} & 0.892 \\
+\bottomrule
+\multicolumn{5}{l}{\textbf{Bold} values indicate the best performance for each metric.} \\
+\end{tabular}
+\end{table}

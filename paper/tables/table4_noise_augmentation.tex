@@ -1,0 +1,25 @@
+\begin{table*}[htbp]
+\centering
+\caption{Noise Augmentation Training Results: Cycle 42 (Baseline) vs Cycle 44 (Noise-Augmented)}
+\label{tab:noise_augmentation}
+\begin{tabular}{cccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Noise $\sigma$}} & \multirow{2}{*}{\textbf{Model}} & \textbf{Strehl} & \textbf{Main Lobe} & \textbf{Synthesis} & \textbf{Residual RMSE} & \multirow{2}{*}{\textbf{Improvement}} \\
+ &  & \textbf{Ratio} & \textbf{Energy} & \textbf{Efficiency} & \textbf{(rad)} & \\
+\midrule
+0.000 & Cycle 42 & 0.683 & 0.525 & 0.796 & 0.892 & \\
+ & Cycle 44 & 0.649 & 0.517 & 0.783 & \textbf{0.855} & -4.9\% \\
+\midrule
+0.002 & Cycle 42 & 0.625 & 0.513 & 0.776 & 0.993 & \\
+ & Cycle 44 & \textbf{0.648} & \textbf{0.517} & \textbf{0.782} & \textbf{0.856} & +3.8\% \\
+\midrule
+0.005 & Cycle 42 & 0.507 & 0.460 & 0.690 & 1.261 & \\
+ & Cycle 44 & \textbf{0.647} & \textbf{0.517} & \textbf{0.782} & \textbf{0.860} & \textbf{+27.5\%} \\
+\midrule
+0.020 & Cycle 42 & 0.474 & 0.435 & 0.652 & 1.374 & \\
+ & Cycle 44 & \textbf{0.616} & \textbf{0.514} & \textbf{0.776} & \textbf{0.917} & \textbf{+29.9\%} \\
+\bottomrule
+\multicolumn{7}{l}{\textbf{Bold} values indicate superior performance. Improvement computed on Strehl ratio.} \\
+\multicolumn{7}{l}{Cycle 44 trained with dynamic noise augmentation $\sigma \sim \text{Uniform}(0, 0.005)$.} \\
+\end{tabular}
+\end{table*}

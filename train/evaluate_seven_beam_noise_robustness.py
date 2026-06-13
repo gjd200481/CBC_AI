@@ -35,6 +35,11 @@ def load_seven_beam_model(model_path, device):
     checkpoint = torch.load(model_path, map_location=device)
     model_name = checkpoint.get("model_name", "simple_cnn")
     in_channels = checkpoint.get("in_channels", 1)
+
+    # 特殊处理：dual_plane_fusion_cnn需要2个输入通道
+    if model_name == "dual_plane_fusion_cnn" and in_channels == 1:
+        in_channels = 2
+
     model = build_phase_model(
         model_name=model_name,
         image_size=160,

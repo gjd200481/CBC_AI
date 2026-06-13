@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\caption{Ablation Study: Model Configurations and Performance}
+\label{tab:ablation}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Test RMSE} & \textbf{Strehl} & \textbf{Main Lobe} & \textbf{Efficiency} \\
+ & (M) & (rad) & Ratio & Energy & \\
+\midrule
+Simple CNN \textit{(Cycle 12)} & 0.17 & 1.027 & 0.647 & 0.519 & 0.786 \\
+Residual CNN \textit{(Cycle 23)} & 0.17 & 0.992 & 0.664 & 0.524 & 0.793 \\
+Residual + Physics \textit{(Cycle 25)} & 0.17 & 0.983 & 0.653 & 0.517 & 0.783 \\
+Deep Residual \textit{(Cycle 30)} & 11.34 & 0.964 & 0.624 & 0.514 & 0.777 \\
+Multiplane Input \textit{(Cycle 35)} & 11.34 & 0.941 & 0.658 & 0.525 & 0.794 \\
+Hex Augmentation \textit{(Cycle 32)} & 11.34 & 0.968 & 0.610 & 0.511 & 0.772 \\
+Compensation Loss \textit{(Cycle 33)} & 11.34 & 0.953 & 0.624 & 0.514 & 0.777 \\
+Dual-Branch Fusion \textit{(Cycle 42)} & 5.77 & 0.974 & 0.683 & 0.525 & 0.796 \\
+\bottomrule
+\end{tabular}
+\end{table}

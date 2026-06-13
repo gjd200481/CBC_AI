@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\caption{Noise Robustness: Cycle 41 (Simple Stack) vs Cycle 42 (Dual-Branch Fusion)}
+\label{tab:noise_robustness}
+\begin{tabular}{ccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Noise $\sigma$}} & \multicolumn{2}{c}{\textbf{Strehl Ratio}} & \multicolumn{2}{c}{\textbf{Main Lobe Energy}} & \multicolumn{2}{c}{\textbf{Efficiency}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+ & C41 & C42 & C41 & C42 & C41 & C42 \\
+\midrule
+0.000 & 0.671 & \textbf{0.683} & 0.525 & \textbf{0.525} & 0.795 & \textbf{0.796} \\
+0.002 & 0.670 & 0.624 & 0.525 & 0.514 & 0.795 & 0.776 \\
+0.005 & 0.488 & \textbf{0.504} & 0.444 & \textbf{0.456} & 0.665 & \textbf{0.685} \\
+0.010 & 0.421 & \textbf{0.471} & 0.391 & \textbf{0.436} & 0.581 & \textbf{0.653} \\
+0.020 & 0.407 & \textbf{0.481} & 0.373 & \textbf{0.440} & 0.554 & \textbf{0.659} \\
+0.030 & 0.407 & \textbf{0.471} & 0.373 & \textbf{0.432} & 0.554 & \textbf{0.647} \\
+\bottomrule
+\multicolumn{7}{l}{\textbf{Bold} values indicate where Cycle 42 outperforms Cycle 41.} \\
+\end{tabular}
+\end{table}
